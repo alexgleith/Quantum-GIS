@@ -67,7 +67,7 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
           ( [self.widthSpin, self.heightSpin], SIGNAL( "valueChanged(int)" ), self.resizeGroupBox ),
           (self.multithreadCheck, SIGNAL("stateChanged(int)")),
           (self.noDataEdit, SIGNAL( "textChanged( const QString & )" ), self.noDataCheck),
-          (self.maskSelector, SIGNAL("filenameChanged()"), self.maskCheck, "1.6.0"),
+          (self.maskSelector, SIGNAL("filenameChanged()"), self.maskCheck, 1600),
         ]
       )
 
@@ -186,6 +186,8 @@ class GdalToolsDialog(QWidget, Ui_Widget, BaseBatchWidget):
 
   def getArguments(self):
       arguments = []
+      if not self.isBatchEnabled():
+        arguments.append("-overwrite")
       if self.sourceSRSCheck.isChecked() and self.sourceSRSEdit.text():
         arguments.append("-s_srs")
         arguments.append(self.sourceSRSEdit.text())

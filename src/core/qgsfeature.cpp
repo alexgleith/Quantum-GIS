@@ -29,7 +29,6 @@ QgsFeature::QgsFeature( QgsFeatureId id )
     , mGeometry( 0 )
     , mOwnsGeometry( 0 )
     , mValid( false )
-    , mFields( 0 )
 {
   // NOOP
 }
@@ -39,7 +38,7 @@ QgsFeature::QgsFeature( const QgsFields &fields, QgsFeatureId id )
     , mGeometry( 0 )
     , mOwnsGeometry( 0 )
     , mValid( false )
-    , mFields( &fields )
+    , mFields( fields )
 {
   initAttributes( fields.count() );
 }
@@ -159,12 +158,12 @@ void QgsFeature::setGeometryAndOwnership( unsigned char *geom, size_t length )
   setGeometry( g );
 }
 
-void QgsFeature::setFields( const QgsFields* fields, bool initAttributes )
+void QgsFeature::setFields( const QgsFields* fields, bool init )
 {
-  mFields = fields;
-  if ( initAttributes )
+  mFields = *fields;
+  if ( init )
   {
-    this->initAttributes( fields->count() );
+    initAttributes( fields->count() );
   }
 }
 
@@ -192,7 +191,7 @@ bool QgsFeature::setAttribute( int idx, const QVariant &value )
 {
   if ( idx < 0 || idx >= mAttributes.size() )
   {
-    QgsMessageLog::logMessage( QObject::tr( "Attribute index %1 out of bounds [0;%2[" ).arg( idx ).arg( mAttributes.size() ), QString::null, QgsMessageLog::WARNING );
+    QgsMessageLog::logMessage( QObject::tr( "Attribute index %1 out of bounds [0;%2]" ).arg( idx ).arg( mAttributes.size() ), QString::null, QgsMessageLog::WARNING );
     return false;
   }
 
@@ -239,12 +238,9 @@ QVariant QgsFeature::attribute( const QString& name ) const
 
 int QgsFeature::fieldNameIndex( const QString& fieldName ) const
 {
-  if ( !mFields )
-    return -1;
-
-  for ( int i = 0; i < mFields->count(); ++i )
+  for ( int i = 0; i < mFields.count(); ++i )
   {
-    if ( QString::compare( mFields->at( i ).name(), fieldName, Qt::CaseInsensitive ) == 0 )
+    if ( QString::compare( mFields.at( i ).name(), fieldName, Qt::CaseInsensitive ) == 0 )
     {
       return i;
     }

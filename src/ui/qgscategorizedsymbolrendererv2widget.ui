@@ -24,14 +24,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="cboCategorizedColumn">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
+      <widget class="QgsFieldExpressionWidget" name="mExpressionWidget" native="true"/>
      </item>
      <item>
       <spacer name="horizontalSpacer">
@@ -87,6 +80,13 @@
          <horstretch>1</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="cbxInvertedColorRamp">
+       <property name="text">
+        <string>Invert</string>
        </property>
       </widget>
      </item>
@@ -196,11 +196,17 @@
    <extends>QComboBox</extends>
    <header>qgscolorrampcombobox.h</header>
   </customwidget>
+  <customwidget>
+   <class>QgsFieldExpressionWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">qgsfieldexpressionwidget.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>cboCategorizedColumn</tabstop>
   <tabstop>btnChangeCategorizedSymbol</tabstop>
   <tabstop>cboCategorizedColorRamp</tabstop>
+  <tabstop>cbxInvertedColorRamp</tabstop>
   <tabstop>viewCategories</tabstop>
   <tabstop>btnAddCategories</tabstop>
   <tabstop>btnDeleteCategories</tabstop>

@@ -2,7 +2,10 @@
  * Class used to render an Atlas, iterating over geometry features.
  * prepareForFeature() modifies the atlas map's extent to zoom on the given feature.
  * This class is used for printing, exporting to PDF and images.
- * */
+ * @note This class should not be created directly. For the atlas to function correctly
+ * the atlasComposition() property for QgsComposition should be used to retrieve a
+ * QgsAtlasComposition which is automatically created and attached to the composition.
+ */
 class QgsAtlasComposition : QObject
 {
 %TypeHeaderCode
@@ -13,29 +16,101 @@ public:
     QgsAtlasComposition( QgsComposition* composition );
     ~QgsAtlasComposition();
 
-    /** Is the atlas generation enabled ? */
+    /**Returns whether the atlas generation is enabled
+     * @returns true if atlas is enabled
+     * @see setEnabled
+     */
     bool enabled() const;
-    void setEnabled( bool e );
+    
+    /**Sets whether the atlas is enabled
+     * @param enabled set to true to enable to atlas
+     * @see enabled
+     */    
+    void setEnabled( bool enabled );
 
-    QgsComposerMap* composerMap() const;
-    void setComposerMap( QgsComposerMap* map );
+    /**Returns the map used by the atlas
+     * @deprecated Use QgsComposerMap::atlasDriven() instead
+     */
+    QgsComposerMap* composerMap() const /Deprecated/;
+    
+    /**Sets the map used by the atlas
+     * @deprecated Use QgsComposerMap::setAtlasDriven( true ) instead
+     */
+    void setComposerMap( QgsComposerMap* map ) /Deprecated/;
 
+    /**Returns true if the atlas is set to hide the coverage layer
+     * @returns true if coverage layer is hidden
+     * @see setHideCoverage
+     */
     bool hideCoverage() const;
+    
+    /**Sets whether the coverage layer should be hidden in map items in the composition
+     * @param hide set to true to hide the coverage layer
+     * @see hideCoverage
+     */    
     void setHideCoverage( bool hide );
 
-    bool fixedScale() const;
-    void setFixedScale( bool fixed );
+    /**Returns whether the atlas map uses a fixed scale
+     * @deprecated Use QgsComposerMap::atlasFixedScale() instead
+     */
+    bool fixedScale() const /Deprecated/;
+    /**Sets whether the atlas map should use a fixed scale
+     * @deprecated Use QgsComposerMap::setAtlasFixedScale( bool ) instead
+     */
+    void setFixedScale( bool fixed ) /Deprecated/;
 
-    float margin() const;
-    void setMargin( float margin );
+    /**Returns the margin for the atlas map
+     * @deprecated Use QgsComposerMap::atlasMargin() instead
+     */
+    float margin() const /Deprecated/;
+    
+    /**Sets the margin for the atlas map
+     * @deprecated Use QgsComposerMap::setAtlasMargin( double ) instead
+     */
+    void setMargin( float margin ) /Deprecated/;
 
+   /**Returns the filename expression used for generating output filenames for each
+     * atlas page.
+     * @returns filename pattern
+     * @see setFilenamePattern
+     * @note This property has no effect when exporting to PDF if singleFile() is true
+     */
     QString filenamePattern() const;
+    
+    /**Sets the filename expression used for generating output filenames for each
+     * atlas page.
+     * @param pattern expression to use for output filenames
+     * @see filenamePattern
+     * @note This method has no effect when exporting to PDF if singleFile() is true
+     */    
     void setFilenamePattern( const QString& pattern );
 
+    /**Returns the coverage layer used for the atlas features
+     * @returns atlas coverage layer
+     * @see setCoverageLayer
+     */
     QgsVectorLayer* coverageLayer() const;
-    void setCoverageLayer( QgsVectorLayer* lmap );
+    
+    /**Sets the coverage layer to use for the atlas features
+     * @param layer vector coverage layer
+     * @see coverageLayer
+     */    
+    void setCoverageLayer( QgsVectorLayer* layer );
 
+    /**Returns whether the atlas will be exported to a single file. This is only
+     * applicable for PDF exports.
+     * @returns true if atlas will be exported to a single file
+     * @see setSingleFile
+     * @note This property is only used for PDF exports.
+     */
     bool singleFile() const;
+    
+    /**Sets whether the atlas should be exported to a single file. This is only
+     * applicable for PDF exports.
+     * @param single set to true to export atlas to a single file.
+     * @see singleFile
+     * @note This method is only used for PDF exports.
+     */    
     void setSingleFile( bool single );
 
     bool sortFeatures() const;
@@ -50,19 +125,26 @@ public:
     QString featureFilter() const;
     void setFeatureFilter( const QString& expression );
 
-    size_t sortKeyAttributeIndex() const;
-    void setSortKeyAttributeIndex( size_t idx );
+    QString sortKeyAttributeName() const;
+    void setSortKeyAttributeName( QString fieldName );
 
-    /** Begins the rendering. */
-    void beginRender();
+    int sortKeyAttributeIndex() const /Deprecated/;
+    void setSortKeyAttributeIndex( int idx ) /Deprecated/;
+
+    /** Begins the rendering. Returns true if successful, false if no matching atlas
+      features found.*/
+    bool beginRender();
     /** Ends the rendering. Restores original extent */
     void endRender();
 
     /** Returns the number of features in the coverage layer */
-    size_t numFeatures() const;
+    int numFeatures() const;
 
     /** Prepare the atlas map for the given feature. Sets the extent and context variables */
-    void prepareForFeature( size_t i );
+    void prepareForFeature( int i );
+
+    /** Prepare the atlas map for the given feature. Sets the extent and context variables */
+    void prepareForFeature( QgsFeature * feat );
 
     /** Returns the current filename. Must be called after prepareForFeature( i ) */
     const QString& currentFilename() const;
@@ -72,7 +154,41 @@ public:
 
     QgsComposition* composition();
 
+    /** Requeries the current atlas coverage layer and applies filtering and sorting. Returns
+      number of matching features. Must be called after prepareForFeature( i ) */
+    int updateFeatures();
+
+    void nextFeature();
+    void prevFeature();
+    void lastFeature();
+    void firstFeature();
+
+    /** Returns the current atlas feature. Must be called after prepareForFeature( i ). */
+    QgsFeature* currentFeature();
+
+    /** Recalculates the bounds of an atlas driven map */
+    void prepareMap( QgsComposerMap* map );
+
   signals:
     /** emitted when one of the parameters changes */
     void parameterChanged();
+
+    /** emitted when atlas is enabled or disabled */
+    void toggled( bool );
+
+    /**Is emitted when the atlas has an updated status bar message for the composer window*/
+    void statusMsgChanged( QString message );
+
+    /**Is emitted when the coverage layer for an atlas changes*/
+    void coverageLayerChanged( QgsVectorLayer* layer );
+
+    /**Is emitted when atlas rendering has begun*/
+    void renderBegun();
+
+    /**Is emitted when atlas rendering has ended*/
+    void renderEnded();
+    
+    /**Is emitted when the current atlas feature changes*/
+    void featureChanged( QgsFeature* feature );
+
 };

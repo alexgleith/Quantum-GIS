@@ -1,6 +1,7 @@
 #ifndef QGSOGCUTILS_H
 #define QGSOGCUTILS_H
 
+class QColor;
 class QDomNode;
 class QDomElement;
 class QDomDocument;
@@ -14,6 +15,7 @@ class QgsGeometry;
 class QgsPoint;
 class QgsRectangle;
 
+#include "qgsgeometry.h"
 #include "qgsexpression.h"
 
 /**
@@ -47,7 +49,7 @@ class CORE_EXPORT QgsOgcUtils
     static QgsRectangle rectangleFromGMLEnvelope( const QDomNode& envelopeNode );
 
     /** Exports the geometry to GML2 or GML3
-        @return QDomELement
+        @return QDomElement
      */
     static QDomElement geometryToGML( QgsGeometry* geometry, QDomDocument& doc, QString format );
 
@@ -66,6 +68,9 @@ class CORE_EXPORT QgsOgcUtils
      */
     static QDomElement rectangleToGMLEnvelope( QgsRectangle* env, QDomDocument& doc );
 
+
+    /** Parse XML with OGC fill into QColor */
+    static QColor colorFromOgcFill( const QDomElement& fillElement );
 
     /** Parse XML with OGC filter into QGIS expression */
     static QgsExpression* expressionFromOgcFilter( const QDomElement& element );
@@ -94,27 +99,27 @@ class CORE_EXPORT QgsOgcUtils
        @param coords list where the found coordinates are appended
        @param elem the \verbatim <gml:coordinates> \endverbatim element
        @return boolean for success*/
-    static bool readGMLCoordinates( std::list<QgsPoint>& coords, const QDomElement elem );
+    static bool readGMLCoordinates( QgsPolyline &coords, const QDomElement &elem );
     /** Reads the \verbatim <gml:pos> \endverbatim or \verbatim <gml:posList> \endverbatim
        and extracts the coordinates as points
        @param coords list where the found coordinates are appended
        @param elem the \verbatim <gml:pos> \endverbatim or
                     \verbatim <gml:posList> \endverbatim element
        @return boolean for success*/
-    static bool readGMLPositions( std::list<QgsPoint>& coords, const QDomElement elem );
+    static bool readGMLPositions( QgsPolyline &coords, const QDomElement &elem );
 
 
     /**Create a GML coordinates element from a point list.
       @param points list of data points
       @param doc the GML document
       @return QDomElement */
-    static QDomElement createGMLCoordinates( const QVector<QgsPoint> points, QDomDocument& doc );
+    static QDomElement createGMLCoordinates( const QgsPolyline &points, QDomDocument& doc );
 
     /**Create a GML pos or posList element from a point list.
       @param points list of data points
       @param doc the GML document
       @return QDomElement */
-    static QDomElement createGMLPositions( const QVector<QgsPoint> points, QDomDocument& doc );
+    static QDomElement createGMLPositions( const QgsPolyline &points, QDomDocument& doc );
 
     //! handle a generic sub-expression
     static QgsExpression::Node* nodeFromOgcFilter( QDomElement &element, QString &errorMessage );

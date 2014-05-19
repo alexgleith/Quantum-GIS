@@ -24,10 +24,6 @@
 
 class QgisApp;
 
-#ifdef _MSC_VER
-#  pragma warning( push )
-#  pragma warning( disable: 4996 )  // declared deprecated
-#endif
 
 /** \class QgisAppInterface
  * \brief Interface class to provide access to private methods in QgisApp
@@ -36,7 +32,7 @@ class QgisApp;
  * Only those functions "exposed" by QgisInterface can be called from within a
  * plugin.
  */
-class QgisAppInterface : public QgisInterface
+class APP_EXPORT QgisAppInterface : public QgisInterface
 {
     Q_OBJECT
 
@@ -150,6 +146,10 @@ class QgisAppInterface : public QgisInterface
     //! Add toolbar with specified name
     QToolBar* addToolBar( QString name );
 
+    //! Add a toolbar
+    //! @note added in 2.3
+    void addToolBar( QToolBar* toolbar, Qt::ToolBarArea area = Qt::TopToolBarArea );
+
     /** Open a url in the users browser. By default the QGIS doc directory is used
      * as the base for the URL. To open a URL that is not relative to the installed
      * QGIS documentation, set useQgisDocDirectory to false.
@@ -157,6 +157,9 @@ class QgisAppInterface : public QgisInterface
      * @param useQgisDocDirectory If true, the URL will be formed by concatenating
      * url to the QGIS documentation directory path (<prefix>/share/doc)
      */
+#ifndef Q_MOC_RUN
+    Q_DECL_DEPRECATED
+#endif
     void openURL( QString url, bool useQgisDocDirectory = true );
 
     /** Return a pointer to the map canvas used by qgisapp */
@@ -332,6 +335,7 @@ class QgisAppInterface : public QgisInterface
     virtual QAction *actionDeleteSelected();
     virtual QAction *actionMoveFeature();
     virtual QAction *actionSplitFeatures();
+    virtual QAction *actionSplitParts();
     virtual QAction *actionAddRing();
     virtual QAction *actionAddPart();
     virtual QAction *actionSimplifyFeature();
@@ -422,15 +426,34 @@ class QgisAppInterface : public QgisInterface
     virtual QAction *actionCheckQgisVersion();
     virtual QAction *actionAbout();
 
-    //! open feature form
-    // returns true when dialog was accepted
-    // @param l vector layer
-    // @param f feature to show/modify
-    // @param updateFeatureOnly only update the feature update (don't change any attributes of the layer)
-    // @added in 1.6
+    /**
+     * Open feature form
+     * returns true when dialog was accepted
+     * @param l vector layer
+     * @param f feature to show/modify
+     * @param updateFeatureOnly only update the feature update (don't change any attributes of the layer)
+     * @note added in 1.6
+     */
     virtual bool openFeatureForm( QgsVectorLayer *l, QgsFeature &f, bool updateFeatureOnly = false );
 
-    virtual QDialog* getFeatureForm( QgsVectorLayer *l, QgsFeature &f );
+    /**
+     * Returns a feature form for a given feature
+     *
+     * @param layer   The layer for which the dialog will be created
+     * @param feature The feature for which the dialog will be created
+     *
+     * @return A feature form
+     */
+    virtual QDialog* getFeatureForm( QgsVectorLayer *layer, QgsFeature &feature );
+
+    /**
+     * Access the vector layer tools instance.
+     * With the help of this you can access methods like addFeature, startEditing
+     * or stopEditing while giving the user the appropriate dialogs.
+     *
+     * @return An instance of the vector layer tools
+     */
+    virtual QgsVectorLayerTools* vectorLayerTools();
 
     /** This method is only needed when using a UI form with a custom widget plugin and calling
      * openFeatureForm or getFeatureForm from Python (PyQt4) and you havn't used the info tool first.
@@ -448,11 +471,13 @@ class QgisAppInterface : public QgisInterface
     /** Return vector layers in edit mode
      * @param modified whether to return only layers that have been modified
      * @returns list of layers in legend order, or empty list
-     * @note added in 1.9 */
+     * @note added in 1.9
+     */
     virtual QList<QgsMapLayer *> editableLayers( bool modified = false ) const;
 
     /** Get timeout for timed messages: default of 5 seconds
-     * @note added in 1.9 */
+     * @note added in 1.9
+     */
     virtual int messageTimeout();
 
   signals:
@@ -481,9 +506,5 @@ class QgisAppInterface : public QgisInterface
     //! Pointer to the PluginManagerInterface object
     QgsAppPluginManagerInterface pluginManagerIface;
 };
-
-#ifdef _MSC_VER
-#  pragma warning( pop )
-#endif
 
 #endif //#define QGISAPPINTERFACE_H

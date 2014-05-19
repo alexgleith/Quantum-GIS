@@ -109,12 +109,22 @@ void QgsRectangle::scale( double scaleFactor, const QgsPoint * cp )
     centerX = xmin + width() / 2;
     centerY = ymin + height() / 2;
   }
+  scale( scaleFactor, centerX, centerY );
+}
+
+void QgsRectangle::scale( double scaleFactor, double centerX, double centerY )
+{
   double newWidth = width() * scaleFactor;
   double newHeight = height() * scaleFactor;
   xmin = centerX - newWidth / 2.0;
   xmax = centerX + newWidth / 2.0;
   ymin = centerY - newHeight / 2.0;
   ymax = centerY + newHeight / 2.0;
+}
+
+QgsRectangle QgsRectangle::buffer( double width )
+{
+  return QgsRectangle( xmin - width, ymin - width, xmax + width, ymax + width );
 }
 
 QgsRectangle QgsRectangle::intersect( const QgsRectangle * rect ) const
@@ -187,10 +197,8 @@ bool QgsRectangle::isEmpty() const
 QString QgsRectangle::asWktCoordinates() const
 {
   QString rep =
-    QString::number( xmin, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + " " +
-    QString::number( ymin, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + ", " +
-    QString::number( xmax, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + " " +
-    QString::number( ymax, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) );
+    qgsDoubleToString( xmin ) + " " + qgsDoubleToString( ymin ) + ", " +
+    qgsDoubleToString( xmax ) + " " + qgsDoubleToString( ymax );
 
   return rep;
 }
@@ -199,16 +207,11 @@ QString QgsRectangle::asWktPolygon() const
 {
   QString rep =
     QString( "POLYGON((" ) +
-    QString::number( xmin, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + " " +
-    QString::number( ymin, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + ", " +
-    QString::number( xmax, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + " " +
-    QString::number( ymin, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + ", " +
-    QString::number( xmax, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + " " +
-    QString::number( ymax, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + ", " +
-    QString::number( xmin, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + " " +
-    QString::number( ymax, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + ", " +
-    QString::number( xmin, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) + " " +
-    QString::number( ymin, 'f', 16 ).remove( QRegExp( "[0]{1,15}$" ) ) +
+    qgsDoubleToString( xmin ) + " " + qgsDoubleToString( ymin ) + ", " +
+    qgsDoubleToString( xmax ) + " " + qgsDoubleToString( ymin ) + ", " +
+    qgsDoubleToString( xmax ) + " " + qgsDoubleToString( ymax ) + ", " +
+    qgsDoubleToString( xmin ) + " " + qgsDoubleToString( ymax ) + ", " +
+    qgsDoubleToString( xmin ) + " " + qgsDoubleToString( ymin ) +
     QString( "))" );
 
   return rep;
@@ -273,11 +276,12 @@ QString QgsRectangle::asPolygon() const
   foo.setRealNumberNotation( QTextStream::FixedNotation );
   // NOTE: a polygon isn't a polygon unless its closed. In the case of
   //       a rectangle, that means 5 points (last == first)
-  foo <<  xmin << " " <<  ymin << ", "
-  <<  xmin << " " <<  ymax << ", "
-  <<  xmax << " " <<  ymax << ", "
-  <<  xmax << " " <<  ymin << ", "
-  <<  xmin << " " <<  ymin;
+  foo
+  << xmin << " " << ymin << ", "
+  << xmin << " " << ymax << ", "
+  << xmax << " " << ymax << ", "
+  << xmax << " " << ymin << ", "
+  << xmin << " " << ymin;
 
   return rep;
 
@@ -286,10 +290,10 @@ QString QgsRectangle::asPolygon() const
 
 bool QgsRectangle::operator==( const QgsRectangle & r1 ) const
 {
-  return ( r1.xMaximum() == xMaximum() &&
-           r1.xMinimum() == xMinimum() &&
-           r1.yMaximum() == yMaximum() &&
-           r1.yMinimum() == yMinimum() );
+  return r1.xMaximum() == xMaximum() &&
+         r1.xMinimum() == xMinimum() &&
+         r1.yMaximum() == yMaximum() &&
+         r1.yMinimum() == yMinimum();
 }
 
 

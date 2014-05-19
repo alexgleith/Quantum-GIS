@@ -80,14 +80,14 @@ void TestQgsOgcUtils::testGeometryToGML()
   QVERIFY( !elemPoint.isNull() );
 
   doc.appendChild( elemPoint );
-  QCOMPARE( doc.toString( -1 ), QString( "<gml:Point><gml:coordinates cs=\",\" ts=\" \">111.0,222.0</gml:coordinates></gml:Point>" ) );
+  QCOMPARE( doc.toString( -1 ), QString( "<gml:Point><gml:coordinates cs=\",\" ts=\" \">111,222</gml:coordinates></gml:Point>" ) );
   doc.removeChild( elemPoint );
 
   QDomElement elemLine = QgsOgcUtils::geometryToGML( geomLine, doc );
   QVERIFY( !elemLine.isNull() );
 
   doc.appendChild( elemLine );
-  QCOMPARE( doc.toString( -1 ), QString( "<gml:LineString><gml:coordinates cs=\",\" ts=\" \">111.0,222.0 222.0,222.0</gml:coordinates></gml:LineString>" ) );
+  QCOMPARE( doc.toString( -1 ), QString( "<gml:LineString><gml:coordinates cs=\",\" ts=\" \">111,222 222,222</gml:coordinates></gml:LineString>" ) );
   doc.removeChild( elemLine );
 
   // Test GML3
@@ -98,14 +98,14 @@ void TestQgsOgcUtils::testGeometryToGML()
   QVERIFY( !elemPoint.isNull() );
 
   doc.appendChild( elemPoint );
-  QCOMPARE( doc.toString( -1 ), QString( "<gml:Point><gml:pos srsDimension=\"2\">111.0 222.0</gml:pos></gml:Point>" ) );
+  QCOMPARE( doc.toString( -1 ), QString( "<gml:Point><gml:pos srsDimension=\"2\">111 222</gml:pos></gml:Point>" ) );
   doc.removeChild( elemPoint );
 
   elemLine = QgsOgcUtils::geometryToGML( geomLine, doc, "GML3" );
   QVERIFY( !elemLine.isNull() );
 
   doc.appendChild( elemLine );
-  QCOMPARE( doc.toString( -1 ), QString( "<gml:LineString><gml:posList srsDimension=\"2\">111.0 222.0 222.0 222.0</gml:posList></gml:LineString>" ) );
+  QCOMPARE( doc.toString( -1 ), QString( "<gml:LineString><gml:posList srsDimension=\"2\">111 222 222 222</gml:posList></gml:LineString>" ) );
   doc.removeChild( elemLine );
 
   delete geomPoint;
@@ -204,13 +204,13 @@ void TestQgsOgcUtils::testExpressionFromOgcFilter()
   QVERIFY( expr );
 
   qDebug( "OGC XML  : %s", xmlText.toAscii().data() );
-  qDebug( "EXPR-DUMP: %s", expr->dump().toAscii().data() );
+  qDebug( "EXPR-DUMP: %s", expr->expression().toAscii().data() );
 
   if ( expr->hasParserError() )
     qDebug( "ERROR: %s ", expr->parserErrorString().toAscii().data() );
   QVERIFY( !expr->hasParserError() );
 
-  QCOMPARE( dumpText, expr->dump() );
+  QCOMPARE( dumpText, expr->expression() );
 
   delete expr;
 }
@@ -234,7 +234,7 @@ void TestQgsOgcUtils::testExpressionToOgcFilter()
 
   doc.appendChild( filterElem );
 
-  qDebug( "EXPR: %s", exp.dump().toAscii().data() );
+  qDebug( "EXPR: %s", exp.expression().toAscii().data() );
   qDebug( "OGC : %s", doc.toString( -1 ).toAscii().data() );
 
   QCOMPARE( xmlText, doc.toString( -1 ) );
@@ -246,19 +246,21 @@ void TestQgsOgcUtils::testExpressionToOgcFilter_data()
   QTest::addColumn<QString>( "xmlText" );
 
   QTest::newRow( "=" ) << QString( "NAME = 'New York'" ) << QString(
-    "<ogc:Filter><ogc:PropertyIsEqualTo>"
+    "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
+    "<ogc:PropertyIsEqualTo>"
     "<ogc:PropertyName>NAME</ogc:PropertyName>"
     "<ogc:Literal>New York</ogc:Literal>"
     "</ogc:PropertyIsEqualTo></ogc:Filter>" );
 
   QTest::newRow( ">" ) << QString( "COUNT > 3" ) << QString(
-    "<ogc:Filter><ogc:PropertyIsGreaterThan>"
+    "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
+    "<ogc:PropertyIsGreaterThan>"
     "<ogc:PropertyName>COUNT</ogc:PropertyName>"
     "<ogc:Literal>3</ogc:Literal>"
     "</ogc:PropertyIsGreaterThan></ogc:Filter>" );
 
   QTest::newRow( "and+or" ) << QString( "(FIELD1 = 10 OR FIELD1 = 20) AND STATUS = 'VALID'" ) << QString(
-    "<ogc:Filter>"
+    "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
     "<ogc:And>"
     "<ogc:Or>"
     "<ogc:PropertyIsEqualTo>"
@@ -278,14 +280,14 @@ void TestQgsOgcUtils::testExpressionToOgcFilter_data()
     "</ogc:Filter>" );
 
   QTest::newRow( "is null" ) << QString( "X IS NULL" ) << QString(
-    "<ogc:Filter>"
+    "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
     "<ogc:PropertyIsNull>"
     "<ogc:PropertyName>X</ogc:PropertyName>"
     "</ogc:PropertyIsNull>"
     "</ogc:Filter>" );
 
   QTest::newRow( "is not null" ) << QString( "X IS NOT NULL" ) << QString(
-    "<ogc:Filter>"
+    "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
     "<ogc:Not>"
     "<ogc:PropertyIsNull>"
     "<ogc:PropertyName>X</ogc:PropertyName>"
@@ -294,7 +296,7 @@ void TestQgsOgcUtils::testExpressionToOgcFilter_data()
     "</ogc:Filter>" );
 
   QTest::newRow( "in" ) << QString( "A IN (10,20,30)" ) << QString(
-    "<ogc:Filter>"
+    "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
     "<ogc:Or>"
     "<ogc:PropertyIsEqualTo>"
     "<ogc:PropertyName>A</ogc:PropertyName>"
@@ -312,18 +314,18 @@ void TestQgsOgcUtils::testExpressionToOgcFilter_data()
     "</ogc:Filter>" );
 
   QTest::newRow( "intersects + wkt" ) << QString( "intersects($geometry, geomFromWKT('POINT (5 6)'))" ) << QString(
-    "<ogc:Filter>"
+    "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
     "<ogc:Intersects>"
     "<ogc:PropertyName>geometry</ogc:PropertyName>"
-    "<gml:Point><gml:coordinates cs=\",\" ts=\" \">5.0,6.0</gml:coordinates></gml:Point>"
+    "<gml:Point><gml:coordinates cs=\",\" ts=\" \">5,6</gml:coordinates></gml:Point>"
     "</ogc:Intersects>"
     "</ogc:Filter>" );
 
-  QTest::newRow( "contains + gml" ) << QString( "contains($geometry, geomFromGML('<Point><coordinates cs=\",\" ts=\" \">5.0,6.0</coordinates></Point>'))" ) << QString(
-    "<ogc:Filter>"
+  QTest::newRow( "contains + gml" ) << QString( "contains($geometry, geomFromGML('<Point><coordinates cs=\",\" ts=\" \">5,6</coordinates></Point>'))" ) << QString(
+    "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
     "<ogc:Contains>"
     "<ogc:PropertyName>geometry</ogc:PropertyName>"
-    "<Point><coordinates cs=\",\" ts=\" \">5.0,6.0</coordinates></Point>"
+    "<Point><coordinates cs=\",\" ts=\" \">5,6</coordinates></Point>"
     "</ogc:Contains>"
     "</ogc:Filter>" );
 

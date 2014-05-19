@@ -20,6 +20,7 @@
 #define QGSVECTORLAYERPROPERTIES
 
 #include "qgsoptionsdialogbase.h"
+#include "qgsscalerangewidget.h"
 #include "ui_qgsvectorlayerpropertiesbase.h"
 #include "qgisgui.h"
 #include "qgsaddattrdialog.h"
@@ -37,12 +38,11 @@ class QgsAttributeActionDialog;
 class QgsApplyDialog;
 class QgsLabelDialog;
 class QgsVectorLayer;
-class QgsVectorOverlayPlugin;
 class QgsLabelingGui;
 class QgsDiagramProperties;
 class QgsFieldsProperties;
 
-class QgsVectorLayerProperties : public QgsOptionsDialogBase, private Ui::QgsVectorLayerPropertiesBase
+class APP_EXPORT QgsVectorLayerProperties : public QgsOptionsDialogBase, private Ui::QgsVectorLayerPropertiesBase
 {
     Q_OBJECT
 
@@ -54,7 +54,7 @@ class QgsVectorLayerProperties : public QgsOptionsDialogBase, private Ui::QgsVec
       DB,
     };
 
-    QgsVectorLayerProperties( QgsVectorLayer *lyr = 0, QWidget *parent = 0, Qt::WFlags fl = QgisGui::ModalDialogFlags );
+    QgsVectorLayerProperties( QgsVectorLayer *lyr = 0, QWidget *parent = 0, Qt::WindowFlags fl = QgisGui::ModalDialogFlags );
     ~QgsVectorLayerProperties();
     /**Returns the display name entered in the dialog*/
     QString displayName();
@@ -117,8 +117,7 @@ class QgsVectorLayerProperties : public QgsOptionsDialogBase, private Ui::QgsVec
     void on_mButtonAddJoin_clicked();
     void on_mButtonRemoveJoin_clicked();
 
-    void on_mMinimumScaleSetCurrentPushButton_clicked();
-    void on_mMaximumScaleSetCurrentPushButton_clicked();
+    void on_mSimplifyDrawingGroupBox_toggled( bool checked );
 
   signals:
 
@@ -168,13 +167,7 @@ class QgsVectorLayerProperties : public QgsOptionsDialogBase, private Ui::QgsVec
     /**Fields dialog. If apply is pressed, options are applied to vector's diagrams*/
     QgsFieldsProperties* mFieldsPropertiesDialog;
 
-
-    QList<QgsApplyDialog*> mOverlayDialogs;
-
     void initDiagramTab();
-
-    /**Requests all overlay plugis from the plugin registry. Useful for inserting their dialogs as new tabs*/
-    QList<QgsVectorOverlayPlugin*> overlayPlugins() const;
 
     /**Buffer pixmap which takes the picture of renderers before they are assigned to the vector layer*/
     //QPixmap bufferPixmap;

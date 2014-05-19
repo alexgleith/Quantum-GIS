@@ -22,7 +22,6 @@
 #include "qgsmapcanvas.h"
 #include "qgsmaplayerregistry.h"
 #include "qgsproject.h"
-#include "qgsrubberband.h"
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
 #include "qgslogger.h"
@@ -44,6 +43,24 @@ bool QgsMapToolAddFeature::addFeature( QgsVectorLayer *vlayer, QgsFeature *f )
 {
   QgsFeatureAction action( tr( "add feature" ), *f, vlayer, -1, -1, this );
   return action.addFeature();
+}
+
+void QgsMapToolAddFeature::activate()
+{
+  if ( !mCanvas || mCanvas->isDrawing() )
+  {
+    return;
+  }
+
+  QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( mCanvas->currentLayer() );
+  if ( vlayer && vlayer->geometryType() == QGis::NoGeometry )
+  {
+    QgsFeature f;
+    addFeature( vlayer, &f );
+    return;
+  }
+
+  QgsMapTool::activate();
 }
 
 void QgsMapToolAddFeature::canvasReleaseEvent( QMouseEvent * e )
@@ -78,6 +95,9 @@ void QgsMapToolAddFeature::canvasReleaseEvent( QMouseEvent * e )
   // POINT CAPTURING
   if ( mode() == CapturePoint )
   {
+    if ( e->button() != Qt::LeftButton )
+      return;
+
     //check we only use this tool for point/multipoint layers
     if ( vlayer->geometryType() != QGis::Point )
     {
@@ -142,6 +162,8 @@ void QgsMapToolAddFeature::canvasReleaseEvent( QMouseEvent * e )
       mCanvas->refresh();
     }
   }
+
+  // LINE AND POLYGON CAPTURING
   else if ( mode() == CaptureLine || mode() == CapturePolygon )
   {
     //check we only use the line tool for line/multiline layers
@@ -161,27 +183,28 @@ void QgsMapToolAddFeature::canvasReleaseEvent( QMouseEvent * e )
     }
 
     //add point to list and to rubber band
-    int error = addVertex( e->pos() );
-    if ( error == 1 )
-    {
-      //current layer is not a vector layer
-      return;
-    }
-    else if ( error == 2 )
-    {
-      //problem with coordinate transformation
-      QMessageBox::information( 0, tr( "Coordinate transform error" ),
-                                tr( "Cannot transform the point to the layers coordinate system" ) );
-      return;
-    }
-
     if ( e->button() == Qt::LeftButton )
     {
+      int error = addVertex( e->pos() );
+      if ( error == 1 )
+      {
+        //current layer is not a vector layer
+        return;
+      }
+      else if ( error == 2 )
+      {
+        //problem with coordinate transformation
+        QMessageBox::information( 0, tr( "Coordinate transform error" ),
+                                  tr( "Cannot transform the point to the layers coordinate system" ) );
+        return;
+      }
+
       startCapturing();
     }
     else if ( e->button() == Qt::RightButton )
     {
       // End of string
+      deleteTempRubberBand();
 
       //lines: bail out if there are not at least two vertices
       if ( mode() == CaptureLine && size() < 2 )

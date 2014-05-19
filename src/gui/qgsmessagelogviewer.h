@@ -36,16 +36,17 @@ class GUI_EXPORT QgsMessageLogViewer: public QDialog, private Ui::QgsMessageLogV
 {
     Q_OBJECT
   public:
-    QgsMessageLogViewer( QStatusBar *statusBar = 0, QWidget *parent = 0, Qt::WFlags fl = QgisGui::ModalDialogFlags );
+    QgsMessageLogViewer( QStatusBar *statusBar = 0, QWidget *parent = 0, Qt::WindowFlags fl = QgisGui::ModalDialogFlags );
     ~QgsMessageLogViewer();
 
   public slots:
     void logMessage( QString message, QString tag, QgsMessageLog::MessageLevel level );
 
-  private:
+  protected:
     void showEvent( QShowEvent * );
     void hideEvent( QHideEvent * );
 
+  private:
     QToolButton *mButton;
     int mCount;
 

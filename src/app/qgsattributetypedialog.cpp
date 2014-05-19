@@ -24,6 +24,8 @@
 #include "qgisapp.h"
 #include "qgsproject.h"
 #include "qgslogger.h"
+#include "qgseditorwidgetfactory.h"
+#include "qgseditorwidgetregistry.h"
 
 #include <QTableWidgetItem>
 #include <QFile>
@@ -47,6 +49,16 @@ QgsAttributeTypeDialog::QgsAttributeTypeDialog( QgsVectorLayer *vl )
   connect( tableWidget, SIGNAL( cellChanged( int, int ) ), this, SLOT( vCellChanged( int, int ) ) );
   connect( valueRelationEditExpression, SIGNAL( clicked() ), this, SLOT( editValueRelationExpression() ) );
 
+  QMapIterator<QString, QgsEditorWidgetFactory*> i( QgsEditorWidgetRegistry::instance()->factories() );
+  while ( i.hasNext() )
+  {
+    i.next();
+    QListWidgetItem* item = new QListWidgetItem( selectionListWidget );
+    item->setText( i.value()->name() );
+    item->setData( Qt::UserRole, i.key() );
+    selectionListWidget->addItem( item );
+  }
+
   valueRelationLayer->clear();
   foreach ( QgsMapLayer *l, QgsMapLayerRegistry::instance()->mapLayers() )
   {
@@ -67,6 +79,53 @@ QgsAttributeTypeDialog::~QgsAttributeTypeDialog()
 QgsVectorLayer::EditType QgsAttributeTypeDialog::editType()
 {
   return mEditType;
+}
+
+const QString QgsAttributeTypeDialog::editorWidgetV2Type()
+{
+  QListWidgetItem* item = selectionListWidget->currentItem();
+  if ( item )
+  {
+    return item->data( Qt::UserRole ).toString();
+  }
+  else
+  {
+    return QString();
+  }
+}
+
+const QString QgsAttributeTypeDialog::editorWidgetV2Text()
+{
+  QListWidgetItem* item = selectionListWidget->currentItem();
+  if ( item )
+  {
+    return item->text();
+  }
+  else
+  {
+    return QString();
+  }
+}
+
+const QMap<QString, QVariant> QgsAttributeTypeDialog::editorWidgetV2Config()
+{
+  QListWidgetItem* item = selectionListWidget->currentItem();
+  if ( item )
+  {
+    QString widgetType = item->data( Qt::UserRole ).toString();
+    QgsEditorConfigWidget* cfgWdg = mEditorConfigWidgets[ widgetType ];
+    if ( cfgWdg )
+    {
+      return cfgWdg->config();
+    }
+  }
+
+  return QMap<QString, QVariant>();
+}
+
+void QgsAttributeTypeDialog::setWidgetV2Config( const QMap<QString, QVariant>& config )
+{
+  mWidgetV2Config = config;
 }
 
 QgsVectorLayer::RangeData QgsAttributeTypeDialog::rangeData()
@@ -107,6 +166,11 @@ bool QgsAttributeTypeDialog::labelOnTop()
 void QgsAttributeTypeDialog::setFieldEditable( bool editable )
 {
   isFieldEditableCheckBox->setChecked( editable );
+}
+
+void QgsAttributeTypeDialog::setFieldEditableEnabled( bool enabled )
+{
+  isFieldEditableCheckBox->setEnabled( enabled );
 }
 
 void QgsAttributeTypeDialog::setLabelOnTop( bool onTop )
@@ -171,7 +235,7 @@ void QgsAttributeTypeDialog::editValueRelationExpression()
 
   QgsDistanceArea myDa;
   myDa.setSourceCrs( vl->crs().srsid() );
-  myDa.setEllipsoidalMode( QgisApp::instance()->mapCanvas()->mapRenderer()->hasCrsTransformEnabled() );
+  myDa.setEllipsoidalMode( QgisApp::instance()->mapCanvas()->mapSettings().hasCrsTransformEnabled() );
   myDa.setEllipsoid( QgsProject::instance()->readEntry( "Measure", "/Ellipsoid", GEO_NONE ) );
   dlg.setGeomCalculator( myDa );
 
@@ -187,7 +251,7 @@ void QgsAttributeTypeDialog::loadFromLayerButtonPushed()
   if ( !layerDialog.exec() )
     return;
 
-  updateMap( layerDialog.valueMap() );
+  updateMap( layerDialog.valueMap(), layerDialog.insertNull() );
 }
 
 void QgsAttributeTypeDialog::loadFromCSVButtonPushed()
@@ -223,12 +287,12 @@ void QgsAttributeTypeDialog::loadFromCSVButtonPushed()
     QString l = s.readLine().trimmed();
 
     QString key, val;
-    if ( re0.indexIn( l ) >= 0 && re0.numCaptures() == 2 )
+    if ( re0.indexIn( l ) >= 0 && re0.captureCount() == 2 )
     {
       key = re0.cap( 1 ).trimmed();
       val = re0.cap( 2 ).trimmed();
     }
-    else if ( re1.indexIn( l ) >= 0 && re1.numCaptures() == 2 )
+    else if ( re1.indexIn( l ) >= 0 && re1.captureCount() == 2 )
     {
       key = re1.cap( 1 ).trimmed();
       val = re1.cap( 2 ).trimmed();
@@ -254,7 +318,7 @@ void QgsAttributeTypeDialog::loadFromCSVButtonPushed()
   updateMap( map );
 }
 
-void QgsAttributeTypeDialog::updateMap( const QMap<QString, QVariant> &map )
+void QgsAttributeTypeDialog::updateMap( const QMap<QString, QVariant> &map, bool insertNull )
 {
   tableWidget->clearContents();
   for ( int i = tableWidget->rowCount() - 1; i > 0; i-- )
@@ -262,7 +326,16 @@ void QgsAttributeTypeDialog::updateMap( const QMap<QString, QVariant> &map )
     tableWidget->removeRow( i );
   }
   int row = 0;
-  for ( QMap<QString, QVariant>::const_iterator mit = map.begin(); mit != map.end(); mit++, row++ )
+
+  if ( insertNull )
+  {
+    QSettings settings;
+    tableWidget->setItem( row, 0, new QTableWidgetItem( settings.value( "qgis/nullValue", "NULL" ).toString() ) );
+    tableWidget->setItem( row, 1, new QTableWidgetItem( "<NULL>" ) );
+    ++row;
+  }
+
+  for ( QMap<QString, QVariant>::const_iterator mit = map.begin(); mit != map.end(); ++mit, row++ )
   {
     tableWidget->insertRow( row );
     if ( mit.value().isNull() )
@@ -352,6 +425,10 @@ void QgsAttributeTypeDialog::setPageForEditType( QgsVectorLayer::EditType editTy
     case QgsVectorLayer::Color:
       setPage( 16 );
       break;
+
+    case QgsVectorLayer::EditorWidgetV2:
+      setPage( 17 );
+      break;
   }
 }
 
@@ -395,7 +472,8 @@ void QgsAttributeTypeDialog::setIndex( int index, QgsVectorLayer::EditType editT
 
   QString text;
   //calculate min and max for range for this field
-  if ( mLayer->pendingFields()[index].type() == QVariant::Int )
+  if ( mLayer->pendingFields()[index].type() == QVariant::Int
+       || mLayer->pendingFields()[index].type() == QVariant::LongLong )
   {
     rangeWidget->clear();
     rangeWidget->addItems( QStringList() << tr( "Editable" ) << tr( "Slider" ) << tr( "Dial" ) );
@@ -455,7 +533,7 @@ void QgsAttributeTypeDialog::setIndex( int index, QgsVectorLayer::EditType editT
       }
 
       int row = 0;
-      for ( QMap<QString, QVariant>::iterator mit = mValueMap.begin(); mit != mValueMap.end(); mit++, row++ )
+      for ( QMap<QString, QVariant>::iterator mit = mValueMap.begin(); mit != mValueMap.end(); ++mit, row++ )
       {
         tableWidget->insertRow( row );
         if ( mit.value().isNull() )
@@ -476,7 +554,8 @@ void QgsAttributeTypeDialog::setIndex( int index, QgsVectorLayer::EditType editT
     case QgsVectorLayer::SliderRange:
     case QgsVectorLayer::DialRange:
     {
-      if ( mLayer->pendingFields()[mIndex].type() != QVariant::Int )
+      if ( mLayer->pendingFields()[mIndex].type() != QVariant::Int
+           || mLayer->pendingFields()[mIndex].type() != QVariant::LongLong )
       {
         minimumSpinBox->setValue( mRangeData.mMin.toInt() );
         maximumSpinBox->setValue( mRangeData.mMax.toInt() );
@@ -539,6 +618,7 @@ void QgsAttributeTypeDialog::setIndex( int index, QgsVectorLayer::EditType editT
     case QgsVectorLayer::TextEdit:
     case QgsVectorLayer::UuidGenerator:
     case QgsVectorLayer::Color:
+    case QgsVectorLayer::EditorWidgetV2:
       break;
   }
 }
@@ -557,7 +637,8 @@ void QgsAttributeTypeDialog::setStackPage( int index )
   {
     case 2:
       if ( mLayer->pendingFields()[mIndex].type() != QVariant::Double &&
-           mLayer->pendingFields()[mIndex].type() != QVariant::Int )
+           mLayer->pendingFields()[mIndex].type() != QVariant::Int &&
+           mLayer->pendingFields()[mIndex].type() != QVariant::LongLong )
       {
         okDisabled = true;
       }
@@ -607,7 +688,40 @@ void QgsAttributeTypeDialog::setStackPage( int index )
       stackedWidget->setCurrentIndex( 15 );
       break;
     default:
-      stackedWidget->setCurrentIndex( index );
+      if ( selectionListWidget->item( index )->data( Qt::UserRole ).isNull() )
+      {
+        stackedWidget->setCurrentIndex( index );
+      }
+      else
+      {
+        QString factoryId = selectionListWidget->item( index )->data( Qt::UserRole ).toString();
+
+        // Set to (empty) editor widget page
+        stackedWidget->setCurrentIndex( 16 );
+
+        // hide any other config widget
+        Q_FOREACH( QgsEditorConfigWidget* wdg, mEditorConfigWidgets.values() )
+        {
+          wdg->hide();
+        }
+
+        if ( mEditorConfigWidgets.contains( factoryId ) )
+        {
+          mEditorConfigWidgets[factoryId]->show();
+        }
+        else
+        {
+          QgsEditorConfigWidget* cfgWdg = QgsEditorWidgetRegistry::instance()->createConfigWidget( factoryId, mLayer, mIndex, this );
+
+          if ( cfgWdg )
+          {
+            cfgWdg->setConfig( mWidgetV2Config );
+            pageEditorWidget->layout()->addWidget( cfgWdg );
+
+            mEditorConfigWidgets.insert( factoryId, cfgWdg );
+          }
+        }
+      }
       break;
   }
 
@@ -631,7 +745,8 @@ void QgsAttributeTypeDialog::accept()
       break;
     case 2:
       //store range data
-      if ( mLayer->pendingFields()[mIndex].type() == QVariant::Int )
+      if ( mLayer->pendingFields()[mIndex].type() == QVariant::Int
+           || mLayer->pendingFields()[mIndex].type() == QVariant::LongLong )
       {
         mRangeData = QgsVectorLayer::RangeData( minimumSpinBox->value(),
                                                 maximumSpinBox->value(),
@@ -734,6 +849,9 @@ void QgsAttributeTypeDialog::accept()
       break;
     case 16:
       mEditType = QgsVectorLayer::Color;
+      break;
+    case 17:
+      mEditType = QgsVectorLayer::EditorWidgetV2;
       break;
   }
 

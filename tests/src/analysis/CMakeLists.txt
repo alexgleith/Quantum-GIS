@@ -5,7 +5,7 @@ SET (util_SRCS)
 #####################################################
 # Don't forget to include output directory, otherwise
 # the UI file won't be wrapped!
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR} 
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_SOURCE_DIR}/src/core
   ${CMAKE_SOURCE_DIR}/src/core/raster
@@ -47,7 +47,7 @@ ENDIF (APPLE)
 #qtests in the executable file list as the moc is
 #directly included in the sources
 #and should not be compiled twice. Trying to include
-#them in will cause an error at build time 
+#them in will cause an error at build time
 
 #No relinking and full RPATH for the install tree
 #See: http://www.cmake.org/Wiki/CMake_RPATH_handling#No_relinking_and_full_RPATH_for_the_install_tree
@@ -59,7 +59,10 @@ MACRO (ADD_QGIS_TEST testname testsrc)
   ADD_CUSTOM_TARGET(qgis_${testname}moc ALL DEPENDS ${qgis_${testname}_MOC_SRCS})
   ADD_EXECUTABLE(qgis_${testname} ${qgis_${testname}_SRCS})
   ADD_DEPENDENCIES(qgis_${testname} qgis_${testname}moc)
-  TARGET_LINK_LIBRARIES(qgis_${testname} ${QT_LIBRARIES} qgis_analysis)
+  TARGET_LINK_LIBRARIES(qgis_${testname}
+    ${QT_QTCORE_LIBRARY}
+    ${QT_QTTEST_LIBRARY}
+    qgis_analysis)
   ADD_TEST(qgis_${testname} ${CMAKE_CURRENT_BINARY_DIR}/../../../output/bin/qgis_${testname})
   #SET_TARGET_PROPERTIES(qgis_${testname} PROPERTIES
   #  INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/${QGIS_LIB_DIR}
@@ -71,6 +74,4 @@ ENDMACRO (ADD_QGIS_TEST)
 
 ADD_QGIS_TEST(analyzertest testqgsvectoranalyzer.cpp)
 ADD_QGIS_TEST(openstreetmaptest testopenstreetmap.cpp)
-
-
-
+ADD_QGIS_TEST(zonalstatisticstest testqgszonalstatistics.cpp)

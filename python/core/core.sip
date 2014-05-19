@@ -1,4 +1,4 @@
-%Module(name=qgis.core,
+%Module(name=qgis._core,
         version=0,
         keyword_arguments="Optional")
 
@@ -27,6 +27,7 @@
 %Include qgsdatasourceuri.sip
 %Include qgsdbfilterproxymodel.sip
 %Include qgsdistancearea.sip
+%Include qgseditorwidgetconfig.sip
 %Include qgserror.sip
 %Include qgsexpression.sip
 %Include qgsfeature.sip
@@ -35,6 +36,8 @@
 %Include qgsfield.sip
 %Include qgsgeometry.sip
 %Include qgsgeometryvalidator.sip
+%Include qgsgeometrysimplifier.sip
+%Include qgsmaptopixelgeometrysimplifier.sip
 %Include qgsgml.sip
 %Include qgsgmlschema.sip
 %Include qgshttptransaction.sip
@@ -44,19 +47,21 @@
 %Include qgslogger.sip
 %Include qgsmaplayer.sip
 %Include qgsmaplayerregistry.sip
+%Include qgsmaplayerrenderer.sip
 %Include qgsmaprenderer.sip
+%Include qgsmaprenderercache.sip
+%Include qgsmaprendererjob.sip
+%Include qgsmapsettings.sip
 %Include qgsmaptopixel.sip
+%Include qgsmapunitscale.sip
 %Include qgsmessagelog.sip
 %Include qgsmessageoutput.sip
 %Include qgsmimedatautils.sip
 %Include qgsnetworkaccessmanager.sip
 %Include qgsofflineediting.sip
 %Include qgsogcutils.sip
-%Include qgsoverlayobject.sip
 %Include qgsowsconnection.sip
 %Include qgspaintenginehack.sip
-%Include qgsoverlayobjectpositionmanager.sip
-%Include qgspalgeometry.sip
 %Include qgspallabeling.sip
 %Include qgspluginlayer.sip
 %Include qgspluginlayerregistry.sip
@@ -70,11 +75,14 @@
 %Include qgsproviderregistry.sip
 %Include qgspythonrunner.sip
 %Include qgsrectangle.sip
+%Include qgsrelation.sip
+%Include qgsrelationmanager.sip
 %Include qgsrenderchecker.sip
 %Include qgsrendercontext.sip
 %Include qgsrunprocess.sip
 %Include qgsscalecalculator.sip
 %Include qgsscaleutils.sip
+%Include qgssimplifymethod.sip
 %Include qgssnapper.sip
 %Include qgsspatialindex.sip
 %Include qgstolerance.sip
@@ -86,16 +94,14 @@
 %Include qgsvectorlayerimport.sip
 %Include qgsvectorlayerjoinbuffer.sip
 %Include qgsvectorlayerundocommand.sip
-%Include qgsvectoroverlay.sip
+%Include qgsvectorsimplifymethod.sip
 %Include qgsfontutils.sip
 
 %Include qgscachedfeatureiterator.sip
 %Include qgscacheindex.sip
 %Include qgscacheindexfeatureid.sip
-%Include qgscentralpointpositionmanager.sip
 %Include qgsfeaturestore.sip
 %Include qgsgeometrycache.sip
-%Include qgspalobjectpositionmanager.sip
 %Include qgsprojectfiletransform.sip
 %Include qgsvectorlayereditutils.sip
 %Include qgsvectorlayerfeatureiterator.sip
@@ -104,6 +110,7 @@
 %Include composer/qgsaddremovemultiframecommand.sip
 %Include composer/qgscomposerarrow.sip
 %Include composer/qgscomposerattributetable.sip
+%Include composer/qgscomposerattributetablemodel.sip
 %Include composer/qgscomposerframe.sip
 %Include composer/qgscomposerhtml.sip
 %Include composer/qgscomposeritem.sip
@@ -119,6 +126,7 @@
 %Include composer/qgscomposerscalebar.sip
 %Include composer/qgscomposershape.sip
 %Include composer/qgscomposertable.sip
+%Include composer/qgscomposertablecolumn.sip
 %Include composer/qgscomposition.sip
 %Include composer/qgsatlascomposition.sip
 %Include composer/qgsdoubleboxscalebarstyle.sip
@@ -211,3 +219,7 @@
 %Include symbology-ng/qgssymbollayerv2registry.sip
 
 %Include symbology-ng/qgssymbologyv2conversion.sip
+
+%Include dxf/qgsdxfexport.sip
+ 
+ 

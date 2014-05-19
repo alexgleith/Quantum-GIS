@@ -15,6 +15,7 @@
 #include "qgsgmlschema.h"
 #include "qgsrectangle.h"
 #include "qgscoordinatereferencesystem.h"
+#include "qgserror.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
 #include "qgsnetworkaccessmanager.h"
@@ -234,7 +235,7 @@ bool QgsGmlSchema::xsdFeatureClass( const QDomElement &element, const QString & 
       }
     }
 
-    QgsField field( fieldName, fieldType );
+    QgsField field( fieldName, fieldType, fieldTypeName );
     featureClass.fields().append( field );
   }
 
@@ -337,8 +338,17 @@ bool QgsGmlSchema::guessSchema( const QByteArray &data )
   XML_SetElementHandler( p, QgsGmlSchema::start, QgsGmlSchema::end );
   XML_SetCharacterDataHandler( p, QgsGmlSchema::chars );
   int atEnd = 1;
-  XML_Parse( p, data.constData(), data.size(), atEnd );
-  return 0;
+  int res = XML_Parse( p, data.constData(), data.size(), atEnd );
+
+  if ( res == 0 )
+  {
+    QString err = QString( XML_ErrorString( XML_GetErrorCode( p ) ) );
+    QgsDebugMsg( QString( "XML_Parse returned %1 error %2" ).arg( res ).arg( err ) );
+    mError = QgsError( err, "GML schema" );
+    mError.append( tr( "Cannot guess schema" ) );
+  }
+
+  return res != 0;
 }
 
 void QgsGmlSchema::startElement( const XML_Char* el, const XML_Char** attr )
@@ -370,6 +380,10 @@ void QgsGmlSchema::startElement( const XML_Char* el, const XML_Char** attr )
     // gml:boundedBy in feature or feature collection -> skip
     mSkipLevel = mLevel + 1;
   }
+  else if ( localName.compare( "featureMembers", Qt::CaseInsensitive ) == 0 )
+  {
+    mParseModeStack.push( QgsGmlSchema::featureMembers );
+  }
   // GML does not specify that gml:FeatureAssociationType elements should end
   // with 'Member' apart standard gml:featureMember, but it is quite usual to
   // that the names ends with 'Member', e.g.: osgb:topographicMember, cityMember,...
@@ -386,7 +400,8 @@ void QgsGmlSchema::startElement( const XML_Char* el, const XML_Char** attr )
   // UMN Mapserver simple GetFeatureInfo response feature element (ends with _feature)
   // or featureMember children
   else if ( elementName.endsWith( "_feature" )
-            || parseMode == QgsGmlSchema::featureMember )
+            || parseMode == QgsGmlSchema::featureMember
+            || parseMode == QgsGmlSchema::featureMembers )
   {
     //QgsDebugMsg ( "is feature path = " + path );
     if ( mFeatureClassMap.count( localName ) == 0 )
@@ -439,7 +454,11 @@ void QgsGmlSchema::endElement( const XML_Char* el )
 
   QgsGmlSchema::ParseMode parseMode = modeStackTop();
 
-  if ( parseMode == QgsGmlSchema::attribute && localName == mAttributeName )
+  if ( parseMode == QgsGmlSchema::featureMembers )
+  {
+    modeStackPop();
+  }
+  else if ( parseMode == QgsGmlSchema::attribute && localName == mAttributeName )
   {
     // End of attribute
     //QgsDebugMsg("end attribute");
@@ -490,7 +509,6 @@ void QgsGmlSchema::endElement( const XML_Char* el )
   }
   else if ( localName.endsWith( "member", Qt::CaseInsensitive ) )
   {
-    mParseModeStack.push( QgsGmlSchema::featureMember );
     modeStackPop();
   }
   mParsePathStack.removeLast();

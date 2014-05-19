@@ -22,14 +22,14 @@
 
 #include <QMessageBox>
 
-QgsAddAttrDialog::QgsAddAttrDialog( QgsVectorLayer *vlayer, QWidget *parent, Qt::WFlags fl )
+QgsAddAttrDialog::QgsAddAttrDialog( QgsVectorLayer *vlayer, QWidget *parent, Qt::WindowFlags fl )
     : QDialog( parent, fl )
+    , mIsShapeFile( vlayer && vlayer->providerType() == "ogr" && vlayer->storageType() == "ESRI Shapefile" )
 {
   setupUi( this );
 
   //fill data types into the combo box
   const QList< QgsVectorDataProvider::NativeType > &typelist = vlayer->dataProvider()->nativeTypes();
-  mLayerType = vlayer->storageType();
 
   for ( int i = 0; i < typelist.size(); i++ )
   {
@@ -50,6 +50,9 @@ QgsAddAttrDialog::QgsAddAttrDialog( QgsVectorLayer *vlayer, QWidget *parent, Qt:
   }
 
   on_mTypeBox_currentIndexChanged( 0 );
+
+  if ( mIsShapeFile )
+    mNameEdit->setMaxLength( 10 );
 }
 
 void QgsAddAttrDialog::on_mTypeBox_currentIndexChanged( int idx )
@@ -59,6 +62,7 @@ void QgsAddAttrDialog::on_mTypeBox_currentIndexChanged( int idx )
   mLength->setMinimum( mTypeBox->itemData( idx, Qt::UserRole + 2 ).toInt() );
   mLength->setMaximum( mTypeBox->itemData( idx, Qt::UserRole + 3 ).toInt() );
   mLength->setVisible( mLength->minimum() < mLength->maximum() );
+  mLengthLabel->setVisible( mLength->minimum() < mLength->maximum() );
   if ( mLength->value() < mLength->minimum() )
     mLength->setValue( mLength->minimum() );
   if ( mLength->value() > mLength->maximum() )
@@ -77,16 +81,14 @@ void QgsAddAttrDialog::setPrecisionMinMax()
   int minPrecType = mTypeBox->itemData( idx, Qt::UserRole + 4 ).toInt();
   int maxPrecType = mTypeBox->itemData( idx, Qt::UserRole + 5 ).toInt();
   mPrec->setVisible( minPrecType < maxPrecType );
-  if ( mPrec->isVisible() )
-  {
-    mPrec->setMinimum( minPrecType );
-    mPrec->setMaximum( qMin( maxPrecType, mLength->value() ) );
-  }
+  mPrecLabel->setVisible( minPrecType < maxPrecType );
+  mPrec->setMinimum( minPrecType );
+  mPrec->setMaximum( qMax( minPrecType, qMin( maxPrecType, mLength->value() ) ) );
 }
 
 void QgsAddAttrDialog::accept()
 {
-  if ( mLayerType == "ESRI Shapefile" && mNameEdit->text().toLower() == "shape" )
+  if ( mIsShapeFile && mNameEdit->text().toLower() == "shape" )
   {
     QMessageBox::warning( this, tr( "Warning" ),
                           tr( "Invalid field name. This field name is reserved and cannot be used." ) );

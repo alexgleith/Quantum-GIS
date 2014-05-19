@@ -125,6 +125,7 @@ QgsComposerLegendWidget::QgsComposerLegendWidget( QgsComposerLegend* legend ): m
   {
     legend->model()->setHorizontalHeaderLabels( QStringList() << tr( "Item" ) << tr( "Title style" ) );
     mItemTreeView->setModel( legend->model() );
+    connect( legend, SIGNAL( itemChanged() ), this, SLOT( setGuiElements() ) );
   }
 
   QgsComposerLegendWidgetStyleDelegate* styleDelegate = new QgsComposerLegendWidgetStyleDelegate();
@@ -161,13 +162,18 @@ void QgsComposerLegendWidget::setGuiElements()
     return;
   }
 
+  int alignment = mLegend->titleAlignment() == Qt::AlignLeft ? 0 : mLegend->titleAlignment() == Qt::AlignHCenter ? 1 : 2;
+
   blockAllSignals( true );
   mTitleLineEdit->setText( mLegend->title() );
+  mTitleAlignCombo->setCurrentIndex( alignment );
   mColumnCountSpinBox->setValue( mLegend->columnCount() );
   mSplitLayerCheckBox->setChecked( mLegend->splitLayer() );
   mEqualColumnWidthCheckBox->setChecked( mLegend->equalColumnWidth() );
   mSymbolWidthSpinBox->setValue( mLegend->symbolWidth() );
   mSymbolHeightSpinBox->setValue( mLegend->symbolHeight() );
+  mWmsLegendWidthSpinBox->setValue( mLegend->wmsLegendWidth() );
+  mWmsLegendHeightSpinBox->setValue( mLegend->wmsLegendHeight() );
   mTitleSpaceBottomSpinBox->setValue( mLegend->style( QgsComposerLegendStyle::Title ).margin( QgsComposerLegendStyle::Bottom ) );
   mGroupSpaceSpinBox->setValue( mLegend->style( QgsComposerLegendStyle::Group ).margin( QgsComposerLegendStyle::Top ) );
   mLayerSpaceSpinBox->setValue( mLegend->style( QgsComposerLegendStyle::Subgroup ).margin( QgsComposerLegendStyle::Top ) );
@@ -213,6 +219,18 @@ void QgsComposerLegendWidget::on_mTitleLineEdit_textChanged( const QString& text
     mLegend->beginCommand( tr( "Legend title changed" ), QgsComposerMergeCommand::ComposerLegendText );
     mLegend->setTitle( text );
     mLegend->adjustBoxSize();
+    mLegend->update();
+    mLegend->endCommand();
+  }
+}
+
+void QgsComposerLegendWidget::on_mTitleAlignCombo_currentIndexChanged( int index )
+{
+  if ( mLegend )
+  {
+    Qt::AlignmentFlag alignment = index == 0 ? Qt::AlignLeft : index == 1 ? Qt::AlignHCenter : Qt::AlignRight;
+    mLegend->beginCommand( tr( "Legend title alignment changed" ) );
+    mLegend->setTitleAlignment( alignment );
     mLegend->update();
     mLegend->endCommand();
   }
@@ -274,6 +292,30 @@ void QgsComposerLegendWidget::on_mSymbolHeightSpinBox_valueChanged( double d )
   {
     mLegend->beginCommand( tr( "Legend symbol height" ), QgsComposerMergeCommand::LegendSymbolHeight );
     mLegend->setSymbolHeight( d );
+    mLegend->adjustBoxSize();
+    mLegend->update();
+    mLegend->endCommand();
+  }
+}
+
+void QgsComposerLegendWidget::on_mWmsLegendWidthSpinBox_valueChanged( double d )
+{
+  if ( mLegend )
+  {
+    mLegend->beginCommand( tr( "Wms Legend width" ), QgsComposerMergeCommand::LegendWmsLegendWidth );
+    mLegend->setWmsLegendWidth( d );
+    mLegend->adjustBoxSize();
+    mLegend->update();
+    mLegend->endCommand();
+  }
+}
+
+void QgsComposerLegendWidget::on_mWmsLegendHeightSpinBox_valueChanged( double d )
+{
+  if ( mLegend )
+  {
+    mLegend->beginCommand( tr( "Wms Legend height" ), QgsComposerMergeCommand::LegendWmsLegendHeight );
+    mLegend->setWmsLegendHeight( d );
     mLegend->adjustBoxSize();
     mLegend->update();
     mLegend->endCommand();
@@ -347,7 +389,7 @@ void QgsComposerLegendWidget::on_mTitleFontButton_clicked()
   if ( mLegend )
   {
     bool ok;
-#if defined(Q_WS_MAC) && QT_VERSION >= 0x040500 && defined(QT_MAC_USE_COCOA)
+#if defined(Q_WS_MAC) && defined(QT_MAC_USE_COCOA)
     // Native Mac dialog works only for Qt Carbon
     QFont newFont = QFontDialog::getFont( &ok, mLegend->style( QgsComposerLegendStyle::Title ).font(), 0, QString(), QFontDialog::DontUseNativeDialog );
 #else
@@ -369,7 +411,7 @@ void QgsComposerLegendWidget::on_mGroupFontButton_clicked()
   if ( mLegend )
   {
     bool ok;
-#if defined(Q_WS_MAC) && QT_VERSION >= 0x040500 && defined(QT_MAC_USE_COCOA)
+#if defined(Q_WS_MAC) && defined(QT_MAC_USE_COCOA)
     // Native Mac dialog works only for Qt Carbon
     QFont newFont = QFontDialog::getFont( &ok, mLegend->style( QgsComposerLegendStyle::Group ).font(), 0, QString(), QFontDialog::DontUseNativeDialog );
 #else
@@ -391,7 +433,7 @@ void QgsComposerLegendWidget::on_mLayerFontButton_clicked()
   if ( mLegend )
   {
     bool ok;
-#if defined(Q_WS_MAC) && QT_VERSION >= 0x040500 && defined(QT_MAC_USE_COCOA)
+#if defined(Q_WS_MAC) && defined(QT_MAC_USE_COCOA)
     // Native Mac dialog works only for Qt Carbon
     QFont newFont = QFontDialog::getFont( &ok, mLegend->style( QgsComposerLegendStyle::Subgroup ).font(), 0, QString(), QFontDialog::DontUseNativeDialog );
 #else
@@ -413,7 +455,7 @@ void QgsComposerLegendWidget::on_mItemFontButton_clicked()
   if ( mLegend )
   {
     bool ok;
-#if defined(Q_WS_MAC) && QT_VERSION >= 0x040500 && defined(QT_MAC_USE_COCOA)
+#if defined(Q_WS_MAC) && defined(QT_MAC_USE_COCOA)
     // Native Mac dialog works only for Qt Carbon
     QFont newFont = QFontDialog::getFont( &ok, mLegend->style( QgsComposerLegendStyle::SymbolLabel ).font(), 0, QString(), QFontDialog::DontUseNativeDialog );
 #else
@@ -862,15 +904,22 @@ void QgsComposerLegendWidget::updateLegend()
 
     //get layer id list
     QStringList layerIdList;
-    QgsMapCanvas* canvas = app->mapCanvas();
-    if ( canvas )
+    const QgsComposerMap* linkedMap = mLegend->composerMap();
+    if ( linkedMap && linkedMap->keepLayerSet() )
     {
-      QgsMapRenderer* renderer = canvas->mapRenderer();
-      if ( renderer )
+      //if there is a linked map, and if that linked map has a locked layer set, we take the layerIdList from that ComposerMap
+      layerIdList = linkedMap->layerSet();
+    }
+    else
+    {
+      //we take the layerIdList from the Canvas
+      QgsMapCanvas* canvas = app->mapCanvas();
+      if ( canvas )
       {
-        layerIdList = renderer->layerSet();
+        layerIdList = canvas->mapSettings().layers();
       }
     }
+
 
     //and also group info
     QgsAppLegendInterface legendIface( app->legend() );
@@ -883,6 +932,7 @@ void QgsComposerLegendWidget::updateLegend()
 void QgsComposerLegendWidget::blockAllSignals( bool b )
 {
   mTitleLineEdit->blockSignals( b );
+  mTitleAlignCombo->blockSignals( b );
   mItemTreeView->blockSignals( b );
   mCheckBoxAutoUpdate->blockSignals( b );
   mMapComboBox->blockSignals( b );
@@ -964,3 +1014,4 @@ void QgsComposerLegendWidget::selectedChanged( const QModelIndex & current, cons
   mCountToolButton->setChecked( layerItem->showFeatureCount() );
   mCountToolButton->setEnabled( true );
 }
+

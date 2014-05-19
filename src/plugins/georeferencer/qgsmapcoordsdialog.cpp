@@ -21,7 +21,7 @@
 #include "qgsgeorefvalidators.h"
 #include "qgsmapcoordsdialog.h"
 
-QgsMapCoordsDialog::QgsMapCoordsDialog( QgsMapCanvas* qgisCanvas, QgsPoint pixelCoords, QWidget* parent )
+QgsMapCoordsDialog::QgsMapCoordsDialog( QgsMapCanvas* qgisCanvas, const QgsPoint &pixelCoords, QWidget* parent )
     : QDialog( parent, Qt::Dialog ), mQgisCanvas( qgisCanvas ), mPixelCoords( pixelCoords )
 {
   setupUi( this );
@@ -116,8 +116,8 @@ void QgsMapCoordsDialog::maybeSetXY( const QgsPoint & xy, Qt::MouseButton button
 
     leXCoord->clear();
     leYCoord->clear();
-    leXCoord->setText( QString::number( mapCoordPoint.x(), 'f', 7 ) );
-    leYCoord->setText( QString::number( mapCoordPoint.y(), 'f', 7 ) );
+    leXCoord->setText( qgsDoubleToString( mapCoordPoint.x() ) );
+    leYCoord->setText( qgsDoubleToString( mapCoordPoint.y() ) );
   }
 
   parentWidget()->showNormal();

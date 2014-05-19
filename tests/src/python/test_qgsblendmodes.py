@@ -24,11 +24,13 @@ __copyright__ = '(C) 2013, Nyall Dawson, Massimo Endrighi'
 __revision__ = '$Format:%H$'
 
 import os
+import qgis
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 from qgis.core import (QgsVectorLayer,
+                       QgsVectorSimplifyMethod,
                        QgsMapLayerRegistry,
                        QgsMapRenderer,
                        QgsCoordinateReferenceSystem,
@@ -62,14 +64,19 @@ class TestQgsBlendModes(TestCase):
         self.mPointLayer = QgsVectorLayer(myShpFile, 'Points', 'ogr')
         self.mMapRegistry.addMapLayer(self.mPointLayer)
 
+        self.mSimplifyMethod = QgsVectorSimplifyMethod() ;
+        self.mSimplifyMethod.setSimplifyHints(QgsVectorSimplifyMethod.NoSimplification);
+
         # create polygon layer
         myShpFile = os.path.join(TEST_DATA_DIR, 'polys.shp')
         self.mPolygonLayer = QgsVectorLayer(myShpFile, 'Polygons', 'ogr')
+        self.mPolygonLayer.setSimplifyMethod(self.mSimplifyMethod)
         self.mMapRegistry.addMapLayer(self.mPolygonLayer)
 
         # create line layer
         myShpFile = os.path.join(TEST_DATA_DIR, 'lines.shp')
         self.mLineLayer = QgsVectorLayer(myShpFile, 'Lines', 'ogr')
+        self.mLineLayer.setSimplifyMethod(self.mSimplifyMethod)
         self.mMapRegistry.addMapLayer(self.mLineLayer)
 
         # create two raster layers
@@ -88,18 +95,18 @@ class TestQgsBlendModes(TestCase):
         self.mCanvas.setCanvasColor(QColor(152, 219, 249))
         self.mMap = self.mCanvas.map()
         self.mMap.resize(QSize(400, 400))
-        self.mMapRenderer = self.mCanvas.mapRenderer()
-        self.mMapRenderer.setOutputSize(QSize(400, 400), 72)
+        self.mapSettings = self.mCanvas.mapSettings()
+        self.mapSettings.setOutputSize(QSize(400, 400))
 
     def testVectorBlending(self):
         """Test that blend modes work for vector layers."""
 
         #Add vector layers to map
-        myLayers = QStringList()
+        myLayers = []
         myLayers.append(self.mLineLayer.id())
         myLayers.append(self.mPolygonLayer.id())
-        self.mMapRenderer.setLayerSet(myLayers)
-        self.mMapRenderer.setExtent(self.mPointLayer.extent())
+        self.mapSettings.setLayers(myLayers)
+        self.mapSettings.setExtent(self.mPointLayer.extent())
 
         #Set blending modes for both layers
         self.mLineLayer.setBlendMode(QPainter.CompositionMode_Difference)
@@ -107,9 +114,9 @@ class TestQgsBlendModes(TestCase):
 
         checker = QgsRenderChecker()
         checker.setControlName("expected_vector_blendmodes")
-        checker.setMapRenderer(self.mMapRenderer)
+        checker.setMapSettings(self.mapSettings)
 
-        myResult = checker.runTest("vector_blendmodes");
+        myResult = checker.runTest("vector_blendmodes", 1500);
         myMessage = ('vector blending failed')
         assert myResult, myMessage
 
@@ -121,20 +128,20 @@ class TestQgsBlendModes(TestCase):
         """Test that feature blend modes work for vector layers."""
 
         #Add vector layers to map
-        myLayers = QStringList()
+        myLayers = []
         myLayers.append(self.mLineLayer.id())
         myLayers.append(self.mPolygonLayer.id())
-        self.mMapRenderer.setLayerSet(myLayers)
-        self.mMapRenderer.setExtent(self.mPointLayer.extent())
+        self.mapSettings.setLayers(myLayers)
+        self.mapSettings.setExtent(self.mPointLayer.extent())
 
         #Set feature blending for line layer
         self.mLineLayer.setFeatureBlendMode(QPainter.CompositionMode_Plus)
 
         checker = QgsRenderChecker()
         checker.setControlName("expected_vector_featureblendmodes")
-        checker.setMapRenderer(self.mMapRenderer)
+        checker.setMapSettings(self.mapSettings)
 
-        myResult = checker.runTest("vector_featureblendmodes");
+        myResult = checker.runTest("vector_featureblendmodes", 1500);
         myMessage = ('vector feature blending failed')
         assert myResult, myMessage
 
@@ -145,39 +152,39 @@ class TestQgsBlendModes(TestCase):
         """Test that layer transparency works for vector layers."""
 
         #Add vector layers to map
-        myLayers = QStringList()
+        myLayers = []
         myLayers.append(self.mLineLayer.id())
         myLayers.append(self.mPolygonLayer.id())
-        self.mMapRenderer.setLayerSet(myLayers)
-        self.mMapRenderer.setExtent(self.mPointLayer.extent())
+        self.mapSettings.setLayers(myLayers)
+        self.mapSettings.setExtent(self.mPointLayer.extent())
 
         #Set feature blending for line layer
         self.mLineLayer.setLayerTransparency( 50 )
 
         checker = QgsRenderChecker()
         checker.setControlName("expected_vector_layertransparency")
-        checker.setMapRenderer(self.mMapRenderer)
+        checker.setMapSettings(self.mapSettings)
 
-        myResult = checker.runTest("vector_layertransparency");
+        myResult = checker.runTest("vector_layertransparency", 1500);
         myMessage = ('vector layer transparency failed')
         assert myResult, myMessage
 
     def testRasterBlending(self):
         """Test that blend modes work for raster layers."""
         #Add raster layers to map
-        myLayers = QStringList()
+        myLayers = []
         myLayers.append(self.mRasterLayer1.id())
         myLayers.append(self.mRasterLayer2.id())
-        self.mMapRenderer.setLayerSet(myLayers)
-        self.mMapRenderer.setExtent(self.mRasterLayer1.extent())
+        self.mapSettings.setLayers(myLayers)
+        self.mapSettings.setExtent(self.mRasterLayer1.extent())
 
         #Set blending mode for top layer
         self.mRasterLayer1.setBlendMode(QPainter.CompositionMode_Plus)
         checker = QgsRenderChecker()
         checker.setControlName("expected_raster_blendmodes")
-        checker.setMapRenderer(self.mMapRenderer)
+        checker.setMapSettings(self.mapSettings)
 
-        myResult = checker.runTest("raster_blendmodes");
+        myResult = checker.runTest("raster_blendmodes", 1500);
         myMessage = ('raster blending failed')
         assert myResult, myMessage
 

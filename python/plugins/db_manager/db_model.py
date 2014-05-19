@@ -94,7 +94,7 @@ class TreeItem(QObject):
 	def path(self):
 		pathList = []
 		if self.parent():
-			pathList.append( self.parent().path() )
+			pathList.extend( self.parent().path() )
 		pathList.append( self.data(0) )
 		return pathList
 
@@ -253,7 +253,7 @@ class TableItem(TreeItem):
 	def path(self):
 		pathList = []
 		if self.parent():
-			pathList.append( self.parent().path() )
+			pathList.extend( self.parent().path() )
 
 		if self.getItemData().type == Table.VectorType:
 			pathList.append( "%s::%s" % ( self.data(0), self.getItemData().geomColumn ) )
@@ -288,6 +288,8 @@ class DBModel(QAbstractItemModel):
 			index = self._rItem2Index(item)
 		if index.isValid():
 			self._refreshIndex(index)
+		else:
+			qDebug( "invalid index" )
 
 	def _rItem2Index(self, item, parent=None):
 		if parent == None:
@@ -521,21 +523,8 @@ class DBModel(QAbstractItemModel):
 					added += 1
 
 		if data.hasFormat(self.QGIS_URI_MIME):
-			encodedData = data.data(self.QGIS_URI_MIME)
-			stream = QDataStream(encodedData, QIODevice.ReadOnly)
-
-			while not stream.atEnd():
-				mimeUri = stream.readQString()
-
-				parts = mimeUri.split(":", 3)
-				if len(parts) != 4:
-					# invalid qgis mime uri
-					QMessageBox.warning(None, self.tr("Invalid MIME uri"), self.tr("The dropped object is not a valid layer"))
-					continue
-
-				layerType, providerKey, layerName, uriString = parts
-
-				if self.importLayer( layerType, providerKey, layerName, uriString, parent ):
+			for uri in qgis.core.QgsMimeDataUtils.decodeUriList( data ):
+				if self.importLayer( uri.layerType, uri.providerKey, uri.name, uri.uri, parent ):
 					added += 1
 
 		return added > 0
@@ -602,4 +591,3 @@ class DBModel(QAbstractItemModel):
 				self._refreshIndex( parent )
 		finally:
 			inLayer.deleteLater()
-

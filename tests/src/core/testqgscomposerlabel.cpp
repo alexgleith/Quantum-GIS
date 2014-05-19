@@ -22,6 +22,7 @@
 #include "qgsmaprenderer.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
+
 #include <QObject>
 #include <QtTest>
 
@@ -43,7 +44,7 @@ class TestQgsComposerLabel: public QObject
   private:
     QgsComposition* mComposition;
     QgsComposerLabel* mComposerLabel;
-    QgsMapRenderer* mMapRenderer;
+    QgsMapSettings mMapSettings;
     QgsVectorLayer* mVectorLayer;
 };
 
@@ -60,31 +61,29 @@ void TestQgsComposerLabel::initTestCase()
   QgsMapLayerRegistry::instance()->addMapLayers( QList<QgsMapLayer*>() << mVectorLayer );
 
   //create composition with composer map
-  mMapRenderer = new QgsMapRenderer();
-  mMapRenderer->setLayerSet( QStringList() << mVectorLayer->id() );
-  mMapRenderer->setProjectionsEnabled( false );
-  mComposition = new QgsComposition( mMapRenderer );
+  mMapSettings.setLayers( QStringList() << mVectorLayer->id() );
+  mMapSettings.setCrsTransformEnabled( false );
+  mComposition = new QgsComposition( mMapSettings );
   mComposition->setPaperSize( 297, 210 ); //A4 landscape
 
   mComposerLabel = new QgsComposerLabel( mComposition );
   mComposition->addComposerLabel( mComposerLabel );
+
+  qWarning() << "composer label font: " << mComposerLabel->font().toString() << " exactMatch:" << mComposerLabel->font().exactMatch();
 }
 
 void TestQgsComposerLabel::cleanupTestCase()
 {
   delete mComposition;
-  delete mMapRenderer;
   delete mVectorLayer;
 }
 
 void TestQgsComposerLabel::init()
 {
-
 }
 
 void TestQgsComposerLabel::cleanup()
 {
-
 }
 
 void TestQgsComposerLabel::evaluation()

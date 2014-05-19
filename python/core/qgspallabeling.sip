@@ -1,3 +1,83 @@
+// QMap<QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined*> is implemented as a Python dictionary.
+%MappedType QMap<QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined*> /DocType="dict-of-QgsPalLayerSettings.DataDefinedProperties-QgsDataDefined*"/
+{
+%TypeHeaderCode
+#include <qmap.h>
+#include <qgspallabeling.h>
+#include <qgsdatadefined.h>
+%End
+%ConvertFromTypeCode
+    // Create the dictionary.
+    PyObject *d = PyDict_New();
+    if (!d)
+        return NULL;
+    // Set the dictionary elements.
+    QMap<QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined*>::const_iterator i = sipCpp->constBegin();
+    while (i != sipCpp->constEnd())
+    {
+        QgsDataDefined *t = i.value();
+        PyObject *kobj = sipConvertFromEnum(i.key(), sipType_QgsPalLayerSettings_DataDefinedProperties);
+        PyObject *tobj = sipConvertFromType(t, sipType_QgsDataDefined, sipTransferObj);
+        if (kobj == NULL || tobj == NULL || PyDict_SetItem(d, kobj, tobj) < 0)
+        {
+            Py_DECREF(d);
+            if (kobj)
+            {
+                Py_DECREF(kobj);
+            }
+            if (tobj)
+            {
+                Py_DECREF(tobj);
+            }
+            else
+            {
+                delete t;
+            }
+            return NULL;
+        }
+        Py_DECREF(kobj);
+        Py_DECREF(tobj);
+        ++i;
+    }
+    return d;
+%End
+%ConvertToTypeCode
+    PyObject *kobj, *tobj;
+    SIP_SSIZE_T i = 0;
+    // Check the type if that is all that is required.
+    if (sipIsErr == NULL)
+    {
+        if (!PyDict_Check(sipPy))
+            return 0;
+        while (PyDict_Next(sipPy, &i, &kobj, &tobj))
+            if (!sipCanConvertToType(tobj, sipType_QgsDataDefined, SIP_NOT_NONE))
+                return 0;
+        return 1;
+    }
+    QMap<QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined*> *qm = new QMap<QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined*>;
+
+    while (PyDict_Next(sipPy, &i, &kobj, &tobj))
+    {
+        int state, k = SIPLong_AsLong(kobj);
+        QgsDataDefined *t = reinterpret_cast<QgsDataDefined *>(sipConvertToType(tobj, sipType_QgsDataDefined, sipTransferObj, SIP_NOT_NONE, &state, sipIsErr));
+
+        if (*sipIsErr)
+        {
+            sipReleaseType(t, sipType_QgsDataDefined, state);
+            delete qm;
+            return 0;
+        }
+        qm->insert(QgsPalLayerSettings::DataDefinedProperties(k), t);
+        sipReleaseType(t, sipType_QgsDataDefined, state);
+    }
+
+    *sipCppPtr = qm;
+
+    return sipGetState(sipTransferObj);
+%End
+};
+
+
 class QgsPalLayerSettings
 {
 %TypeHeaderCode
@@ -8,6 +88,9 @@ class QgsPalLayerSettings
     QgsPalLayerSettings();
     QgsPalLayerSettings( const QgsPalLayerSettings& s );
     ~QgsPalLayerSettings();
+
+    //! @note added in 2.4
+    static QgsPalLayerSettings fromLayer( QgsVectorLayer* layer );
 
     enum Placement
     {
@@ -222,9 +305,7 @@ class QgsPalLayerSettings
     QgsExpression* getLabelExpression();
 
     QFont textFont;
-    //QString textFontFamily;
     QString textNamedStyle;
-    //bool textFontFound;
     bool fontSizeInMapUnits; //true if font size is in map units (otherwise in points)
     QColor textColor;
     int textTransp;
@@ -343,7 +424,7 @@ class QgsPalLayerSettings
     int maxNumLabels; // maximum number of labels to be drawn
 
     double minFeatureSize; // minimum feature size to be labelled (in mm)
-    bool obstacle; // whether it's an obstacle
+    bool obstacle; // whether features for layer are obstacles to labels of other layers
 
     //-- scale factors
     double vectorScaleFactor; //scale factor painter units->pixels
@@ -353,7 +434,7 @@ class QgsPalLayerSettings
     void calculateLabelSize( const QFontMetricsF* fm, QString text, double& labelX, double& labelY, QgsFeature* f = 0 );
 
     // implementation of register feature hook
-    void registerFeature( QgsVectorLayer* layer, QgsFeature& f, const QgsRenderContext& context );
+    void registerFeature( QgsFeature& f, const QgsRenderContext& context );
 
     void readFromLayer( QgsVectorLayer* layer );
     void writeToLayer( QgsVectorLayer* layer );
@@ -361,12 +442,7 @@ class QgsPalLayerSettings
     /** Get a data defined property pointer
      * @note added in 1.9, helpful for Python access
      */
-    QgsDataDefined* dataDefinedProperty( DataDefinedProperties p );
-
-    /** Get current data defined properties
-     * @note added in 1.9, helpful for Python access
-     */
-    QList<QgsPalLayerSettings::DataDefinedProperties> dataDefinedPropertyList();
+    QgsDataDefined* dataDefinedProperty( QgsPalLayerSettings::DataDefinedProperties p );
 
     /** Set a property as data defined
      * @note added in 1.9, helpful for Python access
@@ -380,12 +456,12 @@ class QgsPalLayerSettings
     /** Convert old property value to new one as delimited values
      * @note not available in python bindings; added in 1.9, as temporary solution until refactoring of project settings
      */
-    //QString updateDataDefinedString( const QString& value );
+    QString updateDataDefinedString( const QString& value );
 
     /** Get property value as separate values split into Qmap
      * @note not available in python bindings; added in 1.9
      */
-    //QMap<QString, QString> dataDefinedMap( QgsPalLayerSettings::DataDefinedProperties p ) const;
+    QMap<QString, QString> dataDefinedMap( QgsPalLayerSettings::DataDefinedProperties p ) const;
 
     /** Get data defined property value from expression string or attribute field name
      * @returns value inside QVariant
@@ -397,7 +473,7 @@ class QgsPalLayerSettings
      * @returns true/false whether result is null or invalid
      * @note not available in python bindings; added in 1.9
      */
-    //bool dataDefinedEvaluate( QgsPalLayerSettings::DataDefinedProperties p, QVariant& exprVal ) const;
+    bool dataDefinedEvaluate( QgsPalLayerSettings::DataDefinedProperties p, QVariant& exprVal ) const;
 
     /** Whether data definition is active
      */
@@ -407,9 +483,9 @@ class QgsPalLayerSettings
      */
     bool dataDefinedUseExpression( QgsPalLayerSettings::DataDefinedProperties p ) const;
 
-    /**Stores field names for data defined layer properties*/
-    //! @note not available in python bindings
-    //QMap< QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined* > dataDefinedProperties;
+    /** Map of current data defined properties
+     */
+    QMap< QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined* > dataDefinedProperties;
 
 
     /** Calculates pixel size (considering output size should be in pixel or map units, scale factors and optionally oversampling)
@@ -481,7 +557,6 @@ class QgsLabelComponent
 
     bool useRotation() const;
     void setUseRotation( bool use );
-
     const QgsPoint& center();
     void setCenter( QgsPoint point );
 
@@ -503,6 +578,27 @@ class QgsLabelComponent
     double dpiRatio() const;
     void setDpiRatio( double ratio );
 };
+
+
+/**
+ * Class that stores computed placement from labeling engine.
+ * @note added in 2.4
+ */
+class QgsLabelingResults
+{
+public:
+  QgsLabelingResults();
+  ~QgsLabelingResults();
+
+  //! return infos about labels at a given (map) position
+  QList<QgsLabelPosition> labelsAtPosition( const QgsPoint& p ) const;
+  //! return infos about labels within a given (map) rectangle
+  QList<QgsLabelPosition> labelsWithinRect( const QgsRectangle& r ) const;
+
+private:
+  QgsLabelingResults( const QgsLabelingResults& );
+};
+
 
 class QgsPalLabeling : QgsLabelingEngineInterface
 {
@@ -543,10 +639,16 @@ class QgsPalLabeling : QgsLabelingEngineInterface
     bool isShowingAllLabels() const;
     void setShowingAllLabels( bool showing );
 
+    bool isShowingPartialsLabels() const;
+    void setShowingPartialsLabels( bool showing );
+
     // implemented methods from labeling engine interface
 
     //! called when we're going to start with rendering
-    virtual void init( QgsMapRenderer* mr );
+    //! @deprecated since 2.4 - use override with QgsMapSettings
+    virtual void init( QgsMapRenderer* mr ) /Deprecated/;
+    //! called when we're going to start with rendering
+    virtual void init( const QgsMapSettings& mapSettings );
     //! called to find out whether the layer is used for labeling
     virtual bool willUseLayer( QgsVectorLayer* layer );
     //! clears all PAL layer settings for registered layers
@@ -554,31 +656,36 @@ class QgsPalLabeling : QgsLabelingEngineInterface
     virtual void clearActiveLayers();
     //! clears data defined objects from PAL layer settings for a registered layer
     //! @note: this method was added in version 1.9
-    virtual void clearActiveLayer( QgsVectorLayer* layer );
+    virtual void clearActiveLayer( const QString& layerID );
     //! hook called when drawing layer before issuing select()
-    virtual int prepareLayer( QgsVectorLayer* layer, QSet<int>& attrIndices, QgsRenderContext& ctx );
+    virtual int prepareLayer( QgsVectorLayer* layer, QStringList &attrNames, QgsRenderContext& ctx );
     //! adds a diagram layer to the labeling engine
     virtual int addDiagramLayer( QgsVectorLayer* layer, QgsDiagramLayerSettings *s );
     //! hook called when drawing for every feature in a layer
-    virtual void registerFeature( QgsVectorLayer* layer, QgsFeature& feat, const QgsRenderContext& context = QgsRenderContext() );
-    virtual void registerDiagramFeature( QgsVectorLayer* layer, QgsFeature& feat, const QgsRenderContext& context = QgsRenderContext() );
+    virtual void registerFeature( const QString& layerID, QgsFeature& feat, const QgsRenderContext& context = QgsRenderContext() );
+    virtual void registerDiagramFeature( const QString& layerID, QgsFeature& feat, const QgsRenderContext& context = QgsRenderContext() );
     //! called when the map is drawn and labels should be placed
     virtual void drawLabeling( QgsRenderContext& context );
     //! called when we're done with rendering
     virtual void exit();
     //! return infos about labels at a given (map) position
-    virtual QList<QgsLabelPosition> labelsAtPosition( const QgsPoint& p );
+    virtual QList<QgsLabelPosition> labelsAtPosition( const QgsPoint& p ) /Deprecated/;
     //! return infos about labels within a given (map) rectangle
-    virtual QList<QgsLabelPosition> labelsWithinRect( const QgsRectangle& r );
+    virtual QList<QgsLabelPosition> labelsWithinRect( const QgsRectangle& r ) /Deprecated/;
+
+    //! Return pointer to recently computed results (in drawLabeling()) and pass the ownership of results to the caller
+    //! @note added in 2.4
+    QgsLabelingResults* takeResults() /TransferBack/;
 
     //! called when passing engine among map renderers
     virtual QgsLabelingEngineInterface* clone() /Factory/;
 
-/*
-    void drawLabelCandidateRect( pal::LabelPosition* lp, QPainter* painter, const QgsMapToPixel* xform );
+    //! @note not available in python bindings
+    // void drawLabelCandidateRect( pal::LabelPosition* lp, QPainter* painter, const QgsMapToPixel* xform );
     //!drawLabel
-    void drawLabel( pal::LabelPosition* label, QgsRenderContext& context, QgsPalLayerSettings& tmpLyr, DrawLabelType drawType );
-*/
+    //! @note not available in python bindings
+    // void drawLabel( pal::LabelPosition* label, QgsRenderContext& context, QgsPalLayerSettings& tmpLyr, DrawLabelType drawType );
+
     static void drawLabelBuffer( QgsRenderContext& context,
                                  QgsLabelComponent component,
                                  const QgsPalLayerSettings& tmpLyr );
@@ -596,6 +703,8 @@ class QgsPalLabeling : QgsLabelingEngineInterface
     void loadEngineSettings();
     void saveEngineSettings();
     void clearEngineSettings();
-    bool isStoredWithProject() const;
-    void setStoredWithProject( bool store );
+    //! @deprecated since 2.4 - settings are always stored in project
+    bool isStoredWithProject() const /Deprecated/;
+    //! @deprecated since 2.4 - settings are always stored in project
+    void setStoredWithProject( bool store ) /Deprecated/;
 };

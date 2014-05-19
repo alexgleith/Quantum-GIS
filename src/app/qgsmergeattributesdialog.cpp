@@ -23,6 +23,7 @@
 #include "qgsmapcanvas.h"
 #include "qgsrubberband.h"
 #include "qgsvectorlayer.h"
+#include "qgsvectordataprovider.h"
 #include "qgsattributeeditor.h"
 
 #include <limits>
@@ -84,7 +85,7 @@ void QgsMergeAttributesDialog::createTableWidgetContents()
 
   //create combo boxes and insert attribute names
   const QgsFields& fields = mVectorLayer->pendingFields();
-  QgsAttributeList pkAttrList = mVectorLayer->pendingPkAttributesList();
+  QSet<int> pkAttrList = mVectorLayer->pendingPkAttributesList().toSet();
 
   int col = 0;
   for ( int idx = 0; idx < fields.count(); ++idx )
@@ -274,7 +275,7 @@ void QgsMergeAttributesDialog::refreshMergedValue( int col )
   }
   else //an existing feature value
   {
-    int featureId = mergeBehaviourString.split( " " ).at( 1 ).toInt(); //probably not very robust for translations...
+    int featureId = mergeBehaviourString.split( " " ).value( 1 ).toInt(); //probably not very robust for translations...
     mergeResult = featureAttribute( featureId, col );
   }
 
@@ -483,12 +484,17 @@ void QgsMergeAttributesDialog::on_mFromSelectedPushButton_clicked()
     return;
   }
 
+  QSet<int> pkAttributes = mVectorLayer->pendingPkAttributesList().toSet();
   for ( int i = 0; i < mTableWidget->columnCount(); ++i )
   {
+    if ( pkAttributes.contains( i ) )
+    {
+      continue;
+    }
     QComboBox* currentComboBox = qobject_cast<QComboBox *>( mTableWidget->cellWidget( 0, i ) );
     if ( currentComboBox )
     {
-      currentComboBox->setCurrentIndex( currentComboBox->findText( tr( "feature %1" ).arg( featureId ) ) );
+      currentComboBox->setCurrentIndex( currentComboBox->findText( tr( "Feature %1" ).arg( featureId ) ) );
     }
   }
 }
@@ -563,7 +569,7 @@ void QgsMergeAttributesDialog::createRubberBandForFeature( int featureId )
   //create rubber band to highlight the feature
   delete mSelectionRubberBand;
   mSelectionRubberBand = new QgsRubberBand( mMapCanvas, mVectorLayer->geometryType() == QGis::Polygon );
-  mSelectionRubberBand->setColor( QColor( 255, 0, 0 ) );
+  mSelectionRubberBand->setColor( QColor( 255, 0, 0, 65 ) );
   QgsFeature featureToSelect;
   mVectorLayer->getFeatures( QgsFeatureRequest().setFilterFid( featureId ).setSubsetOfAttributes( QgsAttributeList() ) ).nextFeature( featureToSelect );
   mSelectionRubberBand->setToGeometry( featureToSelect.geometry(), mVectorLayer );
@@ -583,18 +589,25 @@ QgsAttributes QgsMergeAttributesDialog::mergedAttributes() const
   {
     int idx = mTableWidget->horizontalHeaderItem( i )->data( Qt::UserRole ).toInt();
 
-    QComboBox* comboBox = qobject_cast<QComboBox *>( mTableWidget->cellWidget( 0, i ) );
-    if ( comboBox && comboBox->currentText() == tr( "Skip attribute" ) )
+    QComboBox *comboBox = qobject_cast<QComboBox *>( mTableWidget->cellWidget( 0, i ) );
+    if ( !comboBox )
       continue;
 
-    QTableWidgetItem* currentItem = mTableWidget->item( mFeatureList.size() + 1, i );
+    QTableWidgetItem *currentItem = mTableWidget->item( mFeatureList.size() + 1, i );
     if ( !currentItem )
       continue;
 
     if ( idx >= results.count() )
       results.resize( idx + 1 ); // make sure the results vector is long enough (maybe not necessary)
 
-    results[idx] = currentItem->data( Qt::DisplayRole );
+    if ( comboBox->currentText() != tr( "Skip attribute" ) )
+    {
+      results[idx] = currentItem->data( Qt::DisplayRole );
+    }
+    else if ( mVectorLayer->dataProvider() )
+    {
+      results[idx] = mVectorLayer->dataProvider()->defaultValue( idx );
+    }
   }
 
   return results;

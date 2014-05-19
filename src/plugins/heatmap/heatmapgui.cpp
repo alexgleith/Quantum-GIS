@@ -36,7 +36,7 @@
 
 //standard includes
 
-HeatmapGui::HeatmapGui( QWidget* parent, Qt::WFlags fl, QMap<QString, QVariant>* temporarySettings )
+HeatmapGui::HeatmapGui( QWidget* parent, Qt::WindowFlags fl, QMap<QString, QVariant>* temporarySettings )
     : QDialog( parent, fl ),
     mRows( 500 )
 {
@@ -106,6 +106,8 @@ HeatmapGui::HeatmapGui( QWidget* parent, Qt::WFlags fl, QMap<QString, QVariant>*
   updateBBox();
   updateSize();
 
+  mAddToCanvas->setChecked( s.value( "/Heatmap/addToCanvas", true ).toBool() );
+
   blockAllSignals( false );
 
   //finally set right the ok button
@@ -124,6 +126,10 @@ void HeatmapGui::blockAllSignals( bool b )
   radiusFieldCombo->blockSignals( b );
   advancedGroupBox->blockSignals( b );
   kernelShapeCombo->blockSignals( b );
+  rowsSpinBox->blockSignals( b );
+  columnsSpinBox->blockSignals( b );
+  cellXLineEdit->blockSignals( b );
+  cellYLineEdit->blockSignals( b );
 }
 
 /*
@@ -211,6 +217,7 @@ void HeatmapGui::saveSettings()
   // Save persistent settings
   QSettings s;
   s.setValue( "/Heatmap/lastFormat", QVariant( formatCombo->currentIndex() ) );
+  s.setValue( "/Heatmap/addToCanvas", mAddToCanvas->isChecked() );
 
   // Store temporary settings, which only apply to this session
   mHeatmapSessionSettings->insert( QString( "lastInputLayer" ), QVariant( inputLayerCombo->itemData( inputLayerCombo->currentIndex() ) ) );
@@ -285,7 +292,7 @@ void HeatmapGui::on_rowsSpinBox_valueChanged()
   mRows = rowsSpinBox->value();
   mYcellsize = mBBox.height() / mRows;
   mXcellsize = mYcellsize;
-  mColumns = max( qRound( mBBox.width() / mXcellsize ), 1 );
+  mColumns = max( qRound( mBBox.width() / mXcellsize ) + 1, 1 );
 
   updateSize();
 }
@@ -293,7 +300,7 @@ void HeatmapGui::on_rowsSpinBox_valueChanged()
 void HeatmapGui::on_columnsSpinBox_valueChanged()
 {
   mColumns = columnsSpinBox->value();
-  mXcellsize = mBBox.width() / mColumns;
+  mXcellsize = mBBox.width() / ( mColumns - 1 );
   mYcellsize = mXcellsize;
   mRows = max( qRound( mBBox.height() / mYcellsize ), 1 );
 
@@ -304,8 +311,8 @@ void HeatmapGui::on_cellXLineEdit_editingFinished()
 {
   mXcellsize = cellXLineEdit->text().toDouble();
   mYcellsize = mXcellsize;
-  mRows = max( qRound( mBBox.height() / mYcellsize ), 1 );
-  mColumns = max( qRound( mBBox.width() / mXcellsize ), 1 );
+  mRows = max( qRound( mBBox.height() / mYcellsize ) + 1, 1 );
+  mColumns = max( qRound( mBBox.width() / mXcellsize ) + 1, 1 );
 
   updateSize();
 }
@@ -314,8 +321,8 @@ void HeatmapGui::on_cellYLineEdit_editingFinished()
 {
   mYcellsize = cellYLineEdit->text().toDouble();
   mXcellsize = mYcellsize;
-  mRows = max( qRound( mBBox.height() / mYcellsize ), 1 );
-  mColumns = max( qRound( mBBox.width() / mXcellsize ), 1 );
+  mRows = max( qRound( mBBox.height() / mYcellsize ) + 1, 1 );
+  mColumns = max( qRound( mBBox.width() / mXcellsize ) + 1, 1 );
 
   updateSize();
 }
@@ -447,10 +454,12 @@ void HeatmapGui::populateFields()
 
 void HeatmapGui::updateSize()
 {
+  blockAllSignals( true );
   rowsSpinBox->setValue( mRows );
   columnsSpinBox->setValue( mColumns );
   cellXLineEdit->setText( QString::number( mXcellsize ) );
   cellYLineEdit->setText( QString::number( mYcellsize ) );
+  blockAllSignals( false );
 }
 
 void HeatmapGui::updateBBox()
@@ -496,10 +505,9 @@ void HeatmapGui::updateBBox()
   mBBox.setYMaximum( mBBox.yMaximum() + radiusInMapUnits );
 
   // Leave number of rows the same, and calculate new corresponding cell size and number of columns
-  mYcellsize = mBBox.height() / mRows;
+  mYcellsize = mBBox.height() / ( mRows - 1 );
   mXcellsize = mYcellsize;
-  mColumns = max( mBBox.width() / mXcellsize, 1 );
-
+  mColumns = max( mBBox.width() / mXcellsize + 1, 1 );
   updateSize();
 }
 
@@ -575,6 +583,11 @@ int HeatmapGui::weightField()
   int weightindex;
   weightindex = weightFieldCombo->currentIndex();
   return weightFieldCombo->itemData( weightindex ).toInt();
+}
+
+bool HeatmapGui::addToCanvas()
+{
+  return mAddToCanvas->isChecked();
 }
 
 QString HeatmapGui::outputFilename()

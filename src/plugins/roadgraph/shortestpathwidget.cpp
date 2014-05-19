@@ -37,6 +37,7 @@
 #include <qgsfeature.h>
 #include <qgsapplication.h>
 #include <qgsvectorlayer.h>
+#include <qgsmessagebar.h>
 
 #include <qgsgraphdirector.h>
 #include <qgsgraphbuilder.h>
@@ -153,11 +154,11 @@ RgShortestPathWidget::RgShortestPathWidget( QWidget* theParent, RoadGraphPlugin 
   connect( mClear, SIGNAL( clicked( bool ) ), this, SLOT( clear() ) );
 
   mrbFrontPoint = new QgsRubberBand( mPlugin->iface()->mapCanvas(), QGis::Polygon );
-  mrbFrontPoint->setColor( Qt::green );
+  mrbFrontPoint->setColor( QColor( 0, 255, 0, 65 ) );
   mrbFrontPoint->setWidth( 2 );
 
   mrbBackPoint = new QgsRubberBand( mPlugin->iface()->mapCanvas(), QGis::Polygon );
-  mrbBackPoint->setColor( Qt::red );
+  mrbBackPoint->setColor( QColor( 255, 0, 0, 65 ) );
   mrbBackPoint->setWidth( 2 );
 
   mrbPath = new QgsRubberBand( mPlugin->iface()->mapCanvas(), QGis::Line );
@@ -239,8 +240,8 @@ QgsGraph* RgShortestPathWidget::getPath( QgsPoint& p1, QgsPoint& p2 )
   }
 
   QgsGraphBuilder builder(
-    mPlugin->iface()->mapCanvas()->mapRenderer()->destinationCrs(),
-    mPlugin->iface()->mapCanvas()->mapRenderer()->hasCrsTransformEnabled(),
+    mPlugin->iface()->mapCanvas()->mapSettings().destinationCrs(),
+    mPlugin->iface()->mapCanvas()->mapSettings().hasCrsTransformEnabled(),
     mPlugin->topologyToleranceFactor() );
   {
     const QgsGraphDirector *director = mPlugin->director();
@@ -278,17 +279,27 @@ QgsGraph* RgShortestPathWidget::getPath( QgsPoint& p1, QgsPoint& p2 )
 
   QgsGraph *graph = builder.graph();
 
-  QVector< int > pointIdx( 0, 0 );
-  QVector< double > pointCost( 0, 0.0 );
-
   int startVertexIdx = graph->findVertex( p1 );
 
   int criterionNum = 0;
   if ( mCriterionName->currentIndex() > 0 )
     criterionNum = 1;
 
-  QgsGraph* shortestpathTree = QgsGraphAnalyzer::shortestTree( graph, startVertexIdx, criterionNum );
+  if ( graph->vertexCount() == 0 )
+  {
+    mPlugin->iface()->messageBar()->pushMessage(
+      tr( "Cannot calculate path" ),
+      tr( "The created graph is empty. Please check your input data." ),
+      QgsMessageBar::WARNING,
+      mPlugin->iface()->messageTimeout()
+    );
 
+    delete graph;
+    return NULL;
+  }
+
+
+  QgsGraph* shortestpathTree = QgsGraphAnalyzer::shortestTree( graph, startVertexIdx, criterionNum );
   delete graph;
 
   if ( shortestpathTree->findVertex( p2 ) == -1 )
@@ -371,7 +382,7 @@ void RgShortestPathWidget::exportPath()
   if ( path == NULL )
     return;
 
-  QgsCoordinateTransform ct( mPlugin->iface()->mapCanvas()->mapRenderer()->destinationCrs(),
+  QgsCoordinateTransform ct( mPlugin->iface()->mapCanvas()->mapSettings().destinationCrs(),
                              vl->crs() );
 
   int startVertexIdx = path->findVertex( p1 );

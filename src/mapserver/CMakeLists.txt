@@ -6,8 +6,6 @@ IF (NOT FCGI_FOUND)
   MESSAGE (SEND_ERROR "Fast CGI dependency was not found!")
 ENDIF (NOT FCGI_FOUND)
 
-ADD_DEFINITIONS(-DDIAGRAMSERVER=1)
-
 IF (CMAKE_BUILD_TYPE MATCHES Debug OR CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
   ADD_DEFINITIONS(-DQGSMSDEBUG=1)
 ENDIF (CMAKE_BUILD_TYPE MATCHES Debug OR CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
@@ -19,15 +17,13 @@ SET ( qgis_mapserv_SRCS
   qgis_map_serv.cpp
   qgscapabilitiescache.cpp
   qgsconfigcache.cpp
-  qgsconfigparser.cpp
-  qgsprojectparser.cpp
   qgshttprequesthandler.cpp 
   qgsgetrequesthandler.cpp
   qgspostrequesthandler.cpp
   qgssoaprequesthandler.cpp
-  qgssldparser.cpp
   qgswmsserver.cpp
   qgswfsserver.cpp
+  qgswcsserver.cpp
   qgsmapserviceexception.cpp
   qgsmslayercache.cpp
   qgsfilter.cpp
@@ -43,16 +39,15 @@ SET ( qgis_mapserv_SRCS
   qgshostedrdsbuilder.cpp
   qgsremotedatasourcebuilder.cpp
   qgssentdatasourcebuilder.cpp
+  qgsserverlogger.cpp
   qgsmsutils.cpp
-
-  ../plugins/diagram_overlay/qgsdiagramcategory.cpp
-  ../plugins/diagram_overlay/qgsdiagramfactory.cpp
-  ../plugins/diagram_overlay/qgswkndiagramfactory.cpp
-  ../plugins/diagram_overlay/qgsbardiagramfactory.cpp
-  ../plugins/diagram_overlay/qgspiediagramfactory.cpp
-  ../plugins/diagram_overlay/qgssvgdiagramfactory.cpp
-  ../plugins/diagram_overlay/qgsdiagramoverlay.cpp
-  ../plugins/diagram_overlay/qgsdiagramrenderer.cpp
+  qgswcsprojectparser.cpp
+  qgswfsprojectparser.cpp
+  qgswmsconfigparser.cpp
+  qgswmsprojectparser.cpp
+  qgsserverprojectparser.cpp
+  qgssldconfigparser.cpp
+  qgsconfigparserutils.cpp
   )
 
 # SET (qgis_mapserv_UIS 
@@ -64,6 +59,7 @@ SET (qgis_mapserv_MOC_HDRS
   qgscapabilitiescache.h
   qgsconfigcache.h
   qgsmslayercache.h
+  qgsserverlogger.h
 )
 
 SET (qgis_mapserv_RCCS 
@@ -77,11 +73,16 @@ QT4_WRAP_CPP (qgis_mapserv_MOC_SRCS  ${qgis_mapserv_MOC_HDRS})
 
 QT4_ADD_RESOURCES(qgis_mapserv_RCC_SRCS ${qgis_mapserv_RCCS})
 
+# add test resources, e.g. standard test font
+SET(qgis_mapserv_TESTRCCS ../../tests/testdata/testdata.qrc)
+QT4_ADD_RESOURCES(qgis_mapserv_TESTRCC_SRCS ${qgis_mapserv_TESTRCCS})
+
 ADD_EXECUTABLE(qgis_mapserv.fcgi
   ${qgis_mapserv_SRCS} 
   ${qgis_mapserv_MOC_SRCS} 
   ${qgis_mapserv_RCC_SRCS} 
   ${qgis_mapserv_UIS_H}
+  ${qgis_mapserv_TESTRCC_SRCS}
   )
 
 INCLUDE_DIRECTORIES(

@@ -25,6 +25,7 @@
 #include <QLabel>
 #include <QTextCodec>
 #include <QFileInfo>
+#include <QSettings>
 
 #include "qgsapplication.h"
 #include "cpl_error.h"
@@ -45,6 +46,10 @@ QgsShapeFile::QgsShapeFile( QString name, QString encoding )
   fileName = name;
   features = 0;
   QgsApplication::registerOgrDrivers();
+
+  QSettings settings;
+  CPLSetConfigOption( "SHAPE_ENCODING", settings.value( "/qgis/ignoreShapeEncoding", true ).toBool() ? "" : 0 );
+
   ogrDataSource = OGROpen( TO8F( fileName ), false, NULL );
   if ( ogrDataSource != NULL )
   {
@@ -267,7 +272,7 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
                   .arg( QgsPgUtil::quotedIdentifier( table_name ) )
                   .arg( QgsPgUtil::quotedIdentifier( primary_key ) );
 
-  for ( uint n = 0; n < column_names.size() && result; n++ )
+  for ( int n = 0; n < column_names.size() && result; n++ )
   {
     query += QString( ",%1 %2" )
              .arg( QgsPgUtil::quotedIdentifier( column_names[n] ) )
@@ -382,13 +387,13 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
         QString geometry( geo_temp );
         CPLFree( geo_temp );
 
-        for ( uint n = 0; n < column_types.size(); n++ )
+        for ( int n = 0; n < column_types.size(); n++ )
         {
           QString val;
 
           // FIXME: OGR_F_GetFieldAsString returns junk when called with a 8.255 float field
           if ( column_types[n] == "float" )
-            val = QString::number( OGR_F_GetFieldAsDouble( feat, n ) );
+            val = qgsDoubleToString( OGR_F_GetFieldAsDouble( feat, n ) );
           else
             val = codec->toUnicode( OGR_F_GetFieldAsString( feat, n ) );
 

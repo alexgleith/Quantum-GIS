@@ -95,11 +95,13 @@ class Dialog(QDialog, Ui_Dialog):
             self.outShape.clear()
             self.compute(line1, line2, field1, field2, outPath, self.progressBar)
             self.progressBar.setValue(100)
-            addToTOC = QMessageBox.question(self, self.tr("Generate Centroids"), self.tr("Created output point shapefile:\n%s\n\nWould you like to add the new layer to the TOC?") % ( outPath ), QMessageBox.Yes, QMessageBox.No, QMessageBox.NoButton)
-            if addToTOC == QMessageBox.Yes:
-                if not ftools_utils.addShapeToCanvas( unicode( outPath ) ):
+            if self.addToCanvasCheck.isChecked():
+                addCanvasCheck = ftools_utils.addShapeToCanvas(unicode(outPath))
+                if not addCanvasCheck:
                     QMessageBox.warning( self, self.tr("Geoprocessing"), self.tr( "Error loading output shapefile:\n%s" ) % ( unicode( outPath ) ))
                 self.populateLayers()
+            else:
+                QMessageBox.information(self, self.tr("Generate Centroids"),self.tr("Created output shapefile:\n%s" ) % ( unicode( outPath )))
         self.progressBar.setValue(0)
         self.buttonOk.setEnabled( True )
 
@@ -139,11 +141,16 @@ class Dialog(QDialog, Ui_Dialog):
         inFeat = QgsFeature()
         inFeatB = QgsFeature()
         outFeat = QgsFeature()
+        outFields = QgsFields()
+        outFields.append(field1)
+        outFields.append(field2)
+        outFeat.setFields(outFields)
         start = 15.00
         add = 85.00 / layer1.featureCount()
 
         index = ftools_utils.createIndex( provider2 )
 
+        singlelayer_tempList = []
         fit1 = provider1.getFeatures( QgsFeatureRequest().setSubsetOfAttributes([index1]) )
         while fit1.nextFeature(inFeat):
             inGeom = inFeat.geometry()
@@ -165,10 +172,19 @@ class Dialog(QDialog, Ui_Dialog):
                             tempList.append(tempGeom.asPoint())
 
                         for j in tempList:
-                            outFeat.setGeometry(tempGeom.fromPoint(j))
-                            outFeat.setAttribute(0, v1)
-                            outFeat.setAttribute(1, v2)
-                            writer.addFeature(outFeat)
+                            # if same layer, avoid insert duplicated points
+                            if line1 == line2:
+                                if not j in singlelayer_tempList:
+                                    singlelayer_tempList.append(j)
+                                    outFeat.setGeometry(tempGeom.fromPoint(j))
+                                    outFeat.setAttribute(0, v1)
+                                    outFeat.setAttribute(1, v2)
+                                    writer.addFeature(outFeat)
+                            else:
+                                outFeat.setGeometry(tempGeom.fromPoint(j))
+                                outFeat.setAttribute(0, v1)
+                                outFeat.setAttribute(1, v2)
+                                writer.addFeature(outFeat)
 
             start = start + add
             progressBar.setValue(start)

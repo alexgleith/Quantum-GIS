@@ -33,7 +33,7 @@
 
 const int MAX_SAMPLE_LENGTH = 200;
 
-QgsDelimitedTextSourceSelect::QgsDelimitedTextSourceSelect( QWidget * parent, Qt::WFlags fl, bool embedded ):
+QgsDelimitedTextSourceSelect::QgsDelimitedTextSourceSelect( QWidget * parent, Qt::WindowFlags fl, bool embedded ):
     QDialog( parent, fl ),
     mFile( new QgsDelimitedTextFile() ),
     mExampleRowCount( 20 ),
@@ -126,7 +126,7 @@ void QgsDelimitedTextSourceSelect::on_buttonBox_accepted()
   {
     if ( selectedChars().size() == 0 )
     {
-      QMessageBox::warning( this, tr( "No delimiters set" ), tr( "Please one or more characters to use as the delimiter, or choose a different delimiter type" ) );
+      QMessageBox::warning( this, tr( "No delimiters set" ), tr( "Use one or more characters as the delimiter, or choose a different delimiter type" ) );
       txtDelimiterOther->setFocus();
       return;
     }

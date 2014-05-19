@@ -229,7 +229,7 @@ QGISEXTERN QgsDataItem * dataItem( QString thePath, QgsDataItem* parentItem )
   }
 
   // return item without testing if:
-  // scanExtSetting == true
+  // scanExtSetting
   // or zipfile and scan zip == "Basic scan"
   if ( scanExtSetting ||
        (( is_vsizip || is_vsitar ) && scanZipSetting == "basic" ) )
@@ -240,7 +240,7 @@ QGISEXTERN QgsDataItem * dataItem( QString thePath, QgsDataItem* parentItem )
       // do not print errors, but write to debug
       CPLPushErrorHandler( CPLQuietErrorHandler );
       CPLErrorReset();
-      if ( ! GDALIdentifyDriver( thePath.toLocal8Bit().constData(), 0 ) )
+      if ( ! GDALIdentifyDriver( TO8F( thePath ), 0 ) )
       {
         QgsDebugMsgLevel( "Skipping VRT file because root is not a GDAL VRT", 2 );
         CPLPopErrorHandler();

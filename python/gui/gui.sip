@@ -1,4 +1,4 @@
-%Module(name=qgis.gui,
+%Module(name=qgis._gui,
         version=0,
         keyword_arguments="Optional")
 
@@ -13,6 +13,7 @@
 %Include qgisinterface.sip
 %Include qgsannotationitem.sip
 %Include qgsattributeeditor.sip
+%Include qgsattributeeditorcontext.sip
 %Include qgsattributedialog.sip
 %Include qgsbusyindicatordialog.sip
 %Include qgscollapsiblegroupbox.sip
@@ -27,7 +28,11 @@
 %Include qgsexpressionbuilderdialog.sip
 %Include qgsexpressionbuilderwidget.sip
 %Include qgsexpressionhighlighter.sip
+%Include qgsfieldcombobox.sip
+%Include qgsfieldexpressionwidget.sip
+%Include qgsfieldmodel.sip
 %Include qgsfieldvalidator.sip
+%Include qgsfieldproxymodel.sip
 %Include qgsfiledropedit.sip
 %Include qgsfilterlineedit.sip
 %Include qgsformannotationitem.sip
@@ -42,6 +47,10 @@
 %Include qgsmapcanvasitem.sip
 %Include qgsmapcanvasmap.sip
 %Include qgsmapcanvassnapper.sip
+%Include qgsmaplayeractionregistry.sip
+%Include qgsmaplayercombobox.sip
+%Include qgsmaplayermodel.sip
+%Include qgsmaplayerproxymodel.sip
 %Include qgsmapoverviewcanvas.sip
 %Include qgsmaptip.sip
 %Include qgsmaptool.sip
@@ -51,6 +60,7 @@
 %Include qgsmaptooltouch.sip
 %Include qgsmaptoolzoom.sip
 %Include qgsmessagebar.sip
+%Include qgsmessagebaritem.sip
 %Include qgsmessagelogviewer.sip
 %Include qgsmessageviewer.sip
 %Include qgsnewhttpconnection.sip
@@ -65,9 +75,11 @@
 %Include qgsrasterpyramidsoptionswidget.sip
 %Include qgsrubberband.sip
 %Include qgsscalecombobox.sip
+%Include qgsscalerangewidget.sip
 %Include qgssearchquerybuilder.sip
 %Include qgstextannotationitem.sip
 %Include qgsvertexmarker.sip
+%Include qgsvectorlayertools.sip
 %Include qgssublayersdialog.sip
 %Include qgscharacterselectdialog.sip
 %Include qgscomposerruler.sip
@@ -78,6 +90,8 @@
 %Include qgshighlight.sip
 %Include qgsoptionsdialogbase.sip
 %Include qgssvgannotationitem.sip
+%Include qgsextentgroupbox.sip
+%Include qgsprevieweffect.sip
 
 %Include attributetable/qgsattributetabledelegate.sip
 %Include attributetable/qgsattributetablefiltermodel.sip
@@ -89,6 +103,7 @@
 %Include attributetable/qgsfeaturelistviewdelegate.sip
 %Include attributetable/qgsfeaturemodel.sip
 %Include attributetable/qgsfeatureselectionmodel.sip
+%Include attributetable/qgsifeatureselectionmanager.sip
 
 %Include raster/qgsmultibandcolorrendererwidget.sip
 %Include raster/qgspalettedrendererwidget.sip
@@ -126,3 +141,8 @@
 %Include symbology-ng/qgsdatadefinedsymboldialog.sip
 %Include symbology-ng/qgsstylev2exportimportdialog.sip
 %Include symbology-ng/qgssvgselectorwidget.sip
+
+%Include editorwidgets/core/qgseditorconfigwidget.sip
+%Include editorwidgets/core/qgseditorwidgetfactory.sip
+%Include editorwidgets/core/qgseditorwidgetregistry.sip
+%Include editorwidgets/core/qgseditorwidgetwrapper.sip

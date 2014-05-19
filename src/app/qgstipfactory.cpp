@@ -41,7 +41,7 @@ QgsTipFactory::QgsTipFactory() : QObject()
   myTip.setTitle( tr( "QGIS Publications" ) );
   myTip.setContent( tr( "If you write a scientific paper or any other article"
                         " that refers to QGIS we would love to include your work"
-                        " in the <a href=\"http://www.qgis.org/en/community/qgis-case-studies.html\">case studies section</a> of"
+                        " in the <a href=\"http://qgis.org/en/site/about/case_studies/index.html\">case studies section</a> of"
                         " the QGIS home page."
                       ) );
   addGenericTip( myTip );
@@ -51,7 +51,7 @@ QgsTipFactory::QgsTipFactory() : QObject()
                         " and would appreciate your help! The translation process is"
                         " fairly straight forward - instructions are available in the"
                         " QGIS wiki"
-                        " <a href=\"http://www.qgis.org/wiki/GUI_Translation\">translator's page.</a>"
+                        " <a href=\"http://qgis.org/en/site/getinvolved/translate.html#howto-translate-gui\">translator's page.</a>"
                       ) );
   addGuiTip( myTip );
   myTip.setTitle( tr( "QGIS Mailing lists" ) );
@@ -59,7 +59,7 @@ QgsTipFactory::QgsTipFactory() : QObject()
                         " we have a 'users'  mailing list where users help each other with issues"
                         " related to using our sofware. We also have a 'developers' mailing list."
                         " for those wanting help and to discuss things relating to the QGIS code base."
-                        " Details on how to subscribe are in the <a href=\"http://www.qgis.org/en/community/mailing-lists.html\">community section</a> of"
+                        " Details on how to subscribe are in the <a href=\"http://qgis.org/en/site/forusers/support.html#mailing-lists\">community section</a> of"
                         " the QGIS home page."
                       ) );
   addGuiTip( myTip );
@@ -95,8 +95,8 @@ QgsTipFactory::QgsTipFactory() : QObject()
                         " elements. The left one (right arrow icon) selects and moves elements"
                         " in the layout. After selecting the element with this tool you can also"
                         " move them around with the arrow keys. For accurate positioning use the"
-                        " <strong>Position and Size</strong> dialogue, which can be found in the"
-                        " tab <strong>Item Properties -> General Options -> Position and Size</strong>."
+                        " <strong>Position and Size</strong> section, which can be found in the"
+                        " tab <strong>Item Properties -> Position and Size</strong>."
                         " The other move tool (map canvas icon with right arrow) allows one"
                         " to move the map content within a map frame."
                       ) );
@@ -114,8 +114,8 @@ QgsTipFactory::QgsTipFactory() : QObject()
   addGuiTip( myTip );
   // This  tip contributed by Andreas Neumann
   myTip.setTitle( tr( "Rotating a map and linking a north arrow" ) );
-  myTip.setContent( tr( "You can rotate a map by setting its rotation value"
-                        " in the <strong>Item Properties -> Map</strong> section."
+  myTip.setContent( tr( "In the Print Composer you can rotate a map by setting its rotation value"
+                        " in the tab <strong>Item Properties -> Map -> Main properties</strong> section."
                         " To place a north arrow in your layout you can use the"
                         " <strong>Add Image</strong> tool. After the selection and"
                         " placement of the north arrow in the layout you can link it"
@@ -144,8 +144,8 @@ QgsTipFactory::QgsTipFactory() : QObject()
   // by Tim
   myTip.setTitle( tr( "Stopping rendering" ) );
   myTip.setContent( tr( "Sometimes you have a very large dataset which takes ages"
-                        " to draw. You can press 'Esc' (the escape key), or click the small red"
-                        " 'X' icon in the status bar to the bottom right of the window at any"
+                        " to draw. You can press 'Esc' (the escape key), or click the 'Stop"
+                        " map rendering' icon in the status bar to the bottom of the window at any"
                         " time to halt rendering. If you are going to be performing several"
                         " actions (e.g. modifying symbology options) and wish to temporarily"
                         " disable map rendering while you do so, you can uncheck the 'Render'"
@@ -177,7 +177,7 @@ QgsTipFactory::QgsTipFactory() : QObject()
                         " development of QGIS. We use money from sponsors to pay for"
                         " travel and costs related to our regular hackfest meetings, and to generally"
                         " support the goals of our project. Please see the <a"
-                        " href=\"http://qgis.org/en/sponsorship.html\">QGIS Sponsorship Web"
+                        " href=\"http://qgis.org/en/site/getinvolved/governance/sponsorship/sponsorship.html\">QGIS Sponsorship Web"
                         " Page</a> for more details."
                       ) );
   addGenericTip( myTip );

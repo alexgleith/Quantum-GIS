@@ -27,7 +27,7 @@
 QgsWCSConnectionItem::QgsWCSConnectionItem( QgsDataItem* parent, QString name, QString path )
     : QgsDataCollectionItem( parent, name, path )
 {
-  mIcon = QgsApplication::getThemeIcon( "mIconWcs.png" );
+  mIcon = QgsApplication::getThemeIcon( "mIconWcs.svg" );
 }
 
 QgsWCSConnectionItem::~QgsWCSConnectionItem()
@@ -140,7 +140,7 @@ QgsWCSLayerItem::QgsWCSLayerItem( QgsDataItem* parent, QString name, QString pat
   if ( mChildren.size() == 0 )
   {
     //mIcon = iconRaster();
-    mIcon = QgsApplication::getThemeIcon( "mIconWcs.png" );
+    mIcon = QgsApplication::getThemeIcon( "mIconWcs.svg" );
   }
   mPopulated = true;
 }
@@ -220,7 +220,7 @@ QString QgsWCSLayerItem::createUri()
 QgsWCSRootItem::QgsWCSRootItem( QgsDataItem* parent, QString name, QString path )
     : QgsDataCollectionItem( parent, name, path )
 {
-  mIcon = QgsApplication::getThemeIcon( "mIconWcs.png" );
+  mIcon = QgsApplication::getThemeIcon( "mIconWcs.svg" );
 
   populate();
 }
@@ -303,7 +303,7 @@ QGISEXTERN QgsDataItem * dataItem( QString thePath, QgsDataItem* parentItem )
   return new QgsWCSConnectionItem( parentItem, "WCS", thePath );
 }
 
-QGISEXTERN QgsWCSSourceSelect * selectWidget( QWidget * parent, Qt::WFlags fl )
+QGISEXTERN QgsWCSSourceSelect * selectWidget( QWidget * parent, Qt::WindowFlags fl )
 {
   return new QgsWCSSourceSelect( parent, fl );
 }

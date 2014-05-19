@@ -375,7 +375,7 @@ void QgsPGSchemaItem::addLayer( QgsPostgresLayerProperty layerProperty )
       tip = tr( "as geometryless table" );
   }
 
-  QgsPGLayerItem *layerItem = new QgsPGLayerItem( this, layerProperty.tableName, mPath + "/" + layerProperty.tableName, layerType, layerProperty );
+  QgsPGLayerItem *layerItem = new QgsPGLayerItem( this, layerProperty.defaultName(), mPath + "/" + layerProperty.tableName, layerType, layerProperty );
   layerItem->setToolTip( tip );
   addChild( layerItem );
 }
@@ -384,7 +384,7 @@ void QgsPGSchemaItem::addLayer( QgsPostgresLayerProperty layerProperty )
 QgsPGRootItem::QgsPGRootItem( QgsDataItem* parent, QString name, QString path )
     : QgsDataCollectionItem( parent, name, path )
 {
-  mIcon = QgsApplication::getThemeIcon( "mIconPostgis.png" );
+  mIcon = QgsApplication::getThemeIcon( "mIconPostgis.svg" );
   populate();
 }
 

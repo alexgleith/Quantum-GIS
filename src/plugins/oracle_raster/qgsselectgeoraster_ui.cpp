@@ -26,14 +26,14 @@
 #include "qgsvectorlayer.h"
 
 #if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 1800
-#define TO8(x) (x).toUtf8().constData()
+#define TO8F(x) (x).toUtf8().constData()
 #else
-#define TO8(x) (x).toLocal8Bit().constData()
+#define TO8F(x) QFile::encodeName( x ).constData()
 #endif
 
 QgsOracleSelectGeoraster::QgsOracleSelectGeoraster( QWidget* parent,
     QgisInterface* iface,
-    Qt::WFlags fl ) : QDialog( parent, fl ), mIface( iface )
+    Qt::WindowFlags fl ) : QDialog( parent, fl ), mIface( iface )
 {
   setupUi( this );
 
@@ -199,7 +199,7 @@ void QgsOracleSelectGeoraster::showSelection( const QString & line )
    *  Try to open georaster dataset
    */
 
-  hDS = GDALOpenShared( TO8( identification ), eAccess );
+  hDS = GDALOpenShared( TO8F( identification ), eAccess );
 
   buttonBox->button( QDialogButtonBox::Ok )->setEnabled( false );
   if ( hDS == NULL )

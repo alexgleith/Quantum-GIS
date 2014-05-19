@@ -61,7 +61,7 @@ void QgsHttpRequestHandler::sendHttpResponse( QByteArray* ba, const QString& for
   printf( "\n" );
   printf( "Content-Length: %d\n", ba->size() );
   printf( "\n" );
-  int result = fwrite( ba->data(), ba->size(), 1, FCGI_stdout );
+  size_t result = fwrite( ba->data(), ba->size(), 1, FCGI_stdout );
 #ifdef QGISDEBUG
   QgsDebugMsg( QString( "Sent %1 bytes" ).arg( result ) );
 #else
@@ -162,7 +162,7 @@ void QgsHttpRequestHandler::sendGetFeatureInfoResponse( const QDomDocument& info
   QByteArray ba;
   QgsDebugMsg( "Info format is:" + infoFormat );
 
-  if ( infoFormat == "text/xml" )
+  if ( infoFormat == "text/xml" || infoFormat.startsWith( "application/vnd.ogc.gml" ) )
   {
     ba = infoDoc.toByteArray();
   }
@@ -360,6 +360,11 @@ void QgsHttpRequestHandler::endGetFeatureResponse( QByteArray* ba ) const
   }
 
   fwrite( ba->data(), ba->size(), 1, FCGI_stdout );
+}
+
+void QgsHttpRequestHandler::sendGetCoverageResponse( QByteArray* ba ) const
+{
+  sendHttpResponse( ba, "image/tiff" );
 }
 
 void QgsHttpRequestHandler::requestStringToParameterMap( const QString& request, QMap<QString, QString>& parameters )

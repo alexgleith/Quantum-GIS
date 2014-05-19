@@ -50,7 +50,7 @@
 * @param interface - Pointer to the application interface
 * @param fl - Window flags
 */
-eVisGenericEventBrowserGui::eVisGenericEventBrowserGui( QWidget* parent, QgisInterface* interface, Qt::WFlags fl )
+eVisGenericEventBrowserGui::eVisGenericEventBrowserGui( QWidget* parent, QgisInterface* interface, Qt::WindowFlags fl )
     : QDialog( parent, fl )
 {
   setupUi( this );
@@ -83,7 +83,7 @@ eVisGenericEventBrowserGui::eVisGenericEventBrowserGui( QWidget* parent, QgisInt
 * @param canvas - Pointer to the map canvas
 * @param fl - Window flags
 */
-eVisGenericEventBrowserGui::eVisGenericEventBrowserGui( QWidget* parent, QgsMapCanvas* canvas, Qt::WFlags fl )
+eVisGenericEventBrowserGui::eVisGenericEventBrowserGui( QWidget* parent, QgsMapCanvas* canvas, Qt::WindowFlags fl )
     : QDialog( parent, fl )
 {
   setupUi( this );
@@ -181,12 +181,12 @@ bool eVisGenericEventBrowserGui::initBrowser( )
   chkboxUseOnlyFilename->setChecked( false );
 
   QString myThemePath = QgsApplication::activeThemePath( );
-  pbtnResetEventImagePathData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.png" ) ) );
-  pbtnResetCompassBearingData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.png" ) ) );
-  pbtnResetCompassOffsetData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.png" ) ) );
-  pbtnResetBasePathData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.png" ) ) );
-  pbtnResetUseOnlyFilenameData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.png" ) ) );
-  pbtnResetApplyPathRulesToDocs->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.png" ) ) );
+  pbtnResetEventImagePathData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.svg" ) ) );
+  pbtnResetCompassBearingData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.svg" ) ) );
+  pbtnResetCompassOffsetData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.svg" ) ) );
+  pbtnResetBasePathData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.svg" ) ) );
+  pbtnResetUseOnlyFilenameData->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.svg" ) ) );
+  pbtnResetApplyPathRulesToDocs->setIcon( QIcon( QPixmap( myThemePath + "/mActionDraw.svg" ) ) );
 
   chkboxSaveEventImagePathData->setChecked( false );
   chkboxSaveCompassBearingData->setChecked( false );
@@ -544,7 +544,7 @@ void eVisGenericEventBrowserGui::displayImage( )
         return;
 
       QgsPoint myPoint = myFeature->geometry( )->asPoint( );
-      myPoint = mCanvas->mapRenderer( )->layerToMapCoordinates( mVectorLayer, myPoint );
+      myPoint = mCanvas->mapSettings().layerToMapCoordinates( mVectorLayer, myPoint );
       //keep the extent the same just center the map canvas in the display so our feature is in the middle
       QgsRectangle myRect( myPoint.x( ) - ( mCanvas->extent( ).width( ) / 2 ), myPoint.y( ) - ( mCanvas->extent( ).height( ) / 2 ), myPoint.x( ) + ( mCanvas->extent( ).width( ) / 2 ), myPoint.y( ) + ( mCanvas->extent( ).height( ) / 2 ) );
 
@@ -1133,7 +1133,7 @@ void eVisGenericEventBrowserGui::renderSymbol( QPainter* thePainter )
       return;
 
     QgsPoint myPoint = myFeature->geometry( )->asPoint( );
-    myPoint = mCanvas->mapRenderer( )->layerToMapCoordinates( mVectorLayer, myPoint );
+    myPoint = mCanvas->mapSettings().layerToMapCoordinates( mVectorLayer, myPoint );
 
     mCanvas->getCoordinateTransform( )->transform( &myPoint );
 

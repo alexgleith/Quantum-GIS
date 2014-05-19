@@ -31,7 +31,7 @@
 #include <QPushButton>
 
 
-QgsMeasureDialog::QgsMeasureDialog( QgsMeasureTool* tool, Qt::WFlags f )
+QgsMeasureDialog::QgsMeasureDialog( QgsMeasureTool* tool, Qt::WindowFlags f )
     : QDialog( tool->canvas()->topLevelWidget(), f ), mTool( tool )
 {
   setupUi( this );
@@ -60,10 +60,10 @@ void QgsMeasureDialog::updateSettings()
   mCanvasUnits = mTool->canvas()->mapUnits();
   mDisplayUnits = QGis::fromLiteral( settings.value( "/qgis/measure/displayunits", QGis::toLiteral( QGis::Meters ) ).toString() );
   // Configure QgsDistanceArea
-  mDa.setSourceCrs( mTool->canvas()->mapRenderer()->destinationCrs().srsid() );
+  mDa.setSourceCrs( mTool->canvas()->mapSettings().destinationCrs().srsid() );
   mDa.setEllipsoid( QgsProject::instance()->readEntry( "Measure", "/Ellipsoid", GEO_NONE ) );
   // Only use ellipsoidal calculation when project wide transformation is enabled.
-  if ( mTool->canvas()->mapRenderer()->hasCrsTransformEnabled() )
+  if ( mTool->canvas()->mapSettings().hasCrsTransformEnabled() )
   {
     mDa.setEllipsoidalMode( true );
   }
@@ -222,6 +222,7 @@ void QgsMeasureDialog::updateUi()
     toolTip += "<br> * " + tr( "Project CRS transformation is turned off." ) + " ";
     toolTip += tr( "Canvas units setting is taken from project properties setting (%1)." ).arg( QGis::tr( mCanvasUnits ) );
     toolTip += "<br> * " + tr( "Ellipsoidal calculation is not possible, as project CRS is undefined." );
+    setWindowTitle( tr( "Measure (OTF off)" ) );
   }
   else
   {
@@ -235,6 +236,7 @@ void QgsMeasureDialog::updateUi()
       toolTip += "<br> * " + tr( "Project CRS transformation is turned on but ellipsoidal calculation is not selected." );
       toolTip += "<br> * " + tr( "The canvas units setting is taken from the project CRS (%1)." ).arg( QGis::tr( mCanvasUnits ) );
     }
+    setWindowTitle( tr( "Measure (OTF on)" ) );
   }
 
   if (( mCanvasUnits == QGis::Meters && mDisplayUnits == QGis::Feet ) || ( mCanvasUnits == QGis::Feet && mDisplayUnits == QGis::Meters ) )

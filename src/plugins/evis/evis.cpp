@@ -84,26 +84,37 @@ static const QString sDescription = QObject::tr( "An event visualization tool - 
 static const QString sCategory = QObject::tr( "Database" );
 static const QString sPluginVersion = QObject::tr( "Version 1.1.0" );
 static const QgisPlugin::PLUGINTYPE sPluginType = QgisPlugin::UI;
+static const QString sIcon = ":/evis/eVisEventBrowser.png";
 
 
-eVis::eVis( QgisInterface * theQgisInterface ):
-    QgisPlugin( sName, sDescription, sCategory, sPluginVersion, sPluginType ),
-    mQGisIface( theQgisInterface )
+
+eVis::eVis( QgisInterface * theQgisInterface )
+    : QgisPlugin( sName, sDescription, sCategory, sPluginVersion, sPluginType )
+    , mQGisIface( theQgisInterface )
+    , mDatabaseConnectionActionPointer( 0 )
+    , mEventIdToolActionPointer( 0 )
+    , mEventBrowserActionPointer( 0 )
 {
   mIdTool = 0;
 }
 
-eVis::~eVis( )
+eVis::~eVis()
 {
 }
 
-void eVis::initGui( )
+void eVis::initGui()
 {
+  delete mDatabaseConnectionActionPointer;
+  delete mEventIdToolActionPointer;
+  delete mEventBrowserActionPointer;
 
   // Create the action for tool
   mDatabaseConnectionActionPointer = new QAction( QIcon( ":/evis/eVisDatabaseConnection.png" ), tr( "eVis Database Connection" ), this );
+  mDatabaseConnectionActionPointer->setObjectName( "mDatabaseConnectionActionPointer" );
   mEventIdToolActionPointer = new QAction( QIcon( ":/evis/eVisEventIdTool.png" ), tr( "eVis Event Id Tool" ), this );
+  mEventIdToolActionPointer->setObjectName( "mEventIdToolActionPointer" );
   mEventBrowserActionPointer = new QAction( QIcon( ":/evis/eVisEventBrowser.png" ), tr( "eVis Event Browser" ), this );
+  mEventBrowserActionPointer->setObjectName( "mEventBrowserActionPointer" );
 
   // Set the what's this text
   mDatabaseConnectionActionPointer->setWhatsThis( tr( "Create layer from a database query" ) );
@@ -237,6 +248,12 @@ QGISEXTERN QString category( )
 QGISEXTERN int type( )
 {
   return sPluginType;
+}
+
+// Return the icon
+QGISEXTERN QString icon()
+{
+  return sIcon;
 }
 
 // Return the version number for the plugin

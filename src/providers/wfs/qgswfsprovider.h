@@ -27,8 +27,31 @@
 #include "qgsvectorlayer.h"
 #include "qgswfsfeatureiterator.h"
 
+#include <QNetworkRequest>
+
 class QgsRectangle;
 class QgsSpatialIndex;
+
+// TODO: merge with QgsWmsAuthorization?
+struct QgsWFSAuthorization
+{
+  QgsWFSAuthorization( const QString& userName = QString(), const QString& password = QString() ) : mUserName( userName ), mPassword( password ) {}
+
+  //! set authorization header
+  void setAuthorization( QNetworkRequest &request ) const
+  {
+    if ( !mUserName.isNull() || !mPassword.isNull() )
+    {
+      request.setRawHeader( "Authorization", "Basic " + QString( "%1:%2" ).arg( mUserName ).arg( mPassword ).toAscii().toBase64() );
+    }
+  }
+
+  //! Username for basic http authentication
+  QString mUserName;
+
+  //! Password for basic http authentication
+  QString mPassword;
+};
 
 /**A provider reading features from a WFS server*/
 class QgsWFSProvider: public QgsVectorDataProvider
@@ -47,30 +70,9 @@ class QgsWFSProvider: public QgsVectorDataProvider
 
     /* Inherited from QgsVectorDataProvider */
 
+    virtual QgsAbstractFeatureSource* featureSource() const;
+
     QgsFeatureIterator getFeatures( const QgsFeatureRequest& request = QgsFeatureRequest() );
-
-    /**
-     * Gets the feature at the given feature ID.
-     * @param featureId of the feature to be returned
-     * @param feature which will receive the data
-     * @param fetchGeometry flag which if true, will cause the geometry to be fetched from the provider
-     * @param fetchAttributes a list containing the indexes of the attribute fields to copy
-     * @return True when feature was found, otherwise false
-     *
-     * Default implementation traverses all features until it finds the one with correct ID.
-     * In case the provider supports reading the feature directly, override this function.
-     */
-    virtual bool featureAtId( QgsFeatureId featureId,
-                              QgsFeature& feature,
-                              bool fetchGeometry = true,
-                              QgsAttributeList fetchAttributes = QgsAttributeList() );
-
-    /**
-     * Get the next feature resulting from a select operation.
-     * @param feature feature which will receive data from the provider
-     * @return true when there was a feature to fetch, false when end was hit
-     */
-    virtual bool nextFeature( QgsFeature& feature );
 
     QGis::WkbType geometryType() const;
     long featureCount() const;
@@ -150,8 +152,10 @@ class QgsWFSProvider: public QgsVectorDataProvider
 
   private:
     bool mNetworkRequestFinished;
-    friend class QgsWFSFeatureIterator;
-    QSet< QgsWFSFeatureIterator * > mActiveIterators;
+    friend class QgsWFSFeatureSource;
+
+    //! http authorization details
+    QgsWFSAuthorization mAuth;
 
   protected:
     /**Thematic attributes*/
@@ -212,9 +216,6 @@ class QgsWFSProvider: public QgsVectorDataProvider
     /**This method tries to guess the geometry attribute and the other attribute names from the .gml file if no schema is present. Returns 0 in case of success*/
     int guessAttributesFromFile( const QString& uri, QString& geometryAttribute, std::list<QString>& thematicAttributes, QGis::WkbType& geomType ) const;
 
-    /**Copies feature attributes / geometry from f to feature*/
-    void copyFeature( QgsFeature* f, QgsFeature& feature, bool fetchGeometry, QgsAttributeList fetchAttributes );
-
     //GML2 specific methods
     int getExtentFromGML2( QgsRectangle* extent, const QDomElement& wfsCollectionElement ) const;
 
@@ -255,10 +256,10 @@ class QgsWFSProvider: public QgsVectorDataProvider
     void getLayerCapabilities();
     /**Takes <Operations> element and updates the capabilities*/
     void appendSupportedOperations( const QDomElement& operationsElem, int& capabilities ) const;
-    /**Shows a message box with the exception string (or does nothing if the xml document is not an exception)*/
-    void handleException( const QDomDocument& serverResponse ) const;
+    /**records provider error*/
+    void handleException( const QDomDocument& serverResponse );
     /**Initializes "Cache Features" inactive processing*/
-    bool initGetRenderedOnly( QgsRectangle );
+    bool initGetRenderedOnly( const QgsRectangle &rect );
     /**Converts DescribeFeatureType schema geometry property type to WKBType*/
     QGis::WkbType geomTypeFromPropertyType( QString attName, QString propType );
 

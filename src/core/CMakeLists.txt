@@ -3,6 +3,13 @@
 
 SET(QGIS_CORE_SRCS
 
+  qgsmaprenderercache.cpp
+  qgsxmlutils.cpp
+  qgsmapsettings.cpp
+  qgsmaprendererjob.cpp
+  qgsvectorlayerrenderer.cpp
+  raster/qgsrasterlayerrenderer.cpp
+
   gps/qgsgpsconnection.cpp
   gps/qgsgpsconnectionregistry.cpp
   gps/qgsnmeaconnection.cpp
@@ -51,11 +58,11 @@ SET(QGIS_CORE_SRCS
   qgscacheindex.cpp
   qgscacheindexfeatureid.cpp
   qgsbrowsermodel.cpp
-  qgscentralpointpositionmanager.cpp
   qgsclipper.cpp
   qgscontexthelp.cpp
   qgscontexthelp_texts.cpp
   qgscoordinatetransform.cpp
+  qgscredentials.cpp
   qgscrscache.cpp
   qgsdatadefined.cpp
   qgsdatasourceuri.cpp
@@ -75,6 +82,8 @@ SET(QGIS_CORE_SRCS
   qgsgeometry.cpp
   qgsgeometrycache.cpp
   qgsgeometryvalidator.cpp
+  qgsgeometrysimplifier.cpp
+  qgssimplifymethod.cpp
   qgsgml.cpp
   qgsgmlschema.cpp
   qgshttptransaction.cpp
@@ -86,18 +95,16 @@ SET(QGIS_CORE_SRCS
   qgsmaplayerregistry.cpp
   qgsmaprenderer.cpp
   qgsmaptopixel.cpp
+  qgsmaptopixelgeometrysimplifier.cpp
   qgsmessageoutput.cpp
   qgsmimedatautils.cpp
   qgsmessagelog.cpp
   qgsnetworkreplyparser.cpp
-  qgscredentials.cpp
+  qgsobjectcustomproperties.cpp
   qgsofflineediting.cpp
   qgsogcutils.cpp
-  qgsoverlayobject.cpp
   qgsowsconnection.cpp
-  qgspalgeometry.cpp
   qgspallabeling.cpp
-  qgspalobjectpositionmanager.cpp
   qgspluginlayer.cpp
   qgspluginlayerregistry.cpp
   qgspoint.cpp
@@ -110,6 +117,8 @@ SET(QGIS_CORE_SRCS
   qgsprovidermetadata.cpp
   qgsproviderregistry.cpp
   qgspythonrunner.cpp
+  qgsrelation.cpp
+  qgsrelationmanager.cpp
   qgsrendercontext.cpp
   qgsrenderchecker.cpp
   qgsrectangle.cpp
@@ -119,7 +128,6 @@ SET(QGIS_CORE_SRCS
   qgscoordinatereferencesystem.cpp
   qgstolerance.cpp
   qgsvectordataprovider.cpp
-  qgsvectorlayercache.cpp
   qgsvectorfilewriter.cpp
   qgsvectorlayer.cpp
   qgsvectorlayercache.cpp
@@ -129,7 +137,7 @@ SET(QGIS_CORE_SRCS
   qgsvectorlayerimport.cpp
   qgsvectorlayerjoinbuffer.cpp
   qgsvectorlayerundocommand.cpp
-  qgsvectoroverlay.cpp
+  qgsvectorsimplifymethod.cpp
 
   qgsnetworkaccessmanager.cpp
 
@@ -138,6 +146,7 @@ SET(QGIS_CORE_SRCS
   composer/qgscomposermultiframecommand.cpp
   composer/qgscomposerarrow.cpp
   composer/qgscomposerframe.cpp
+  composer/qgscomposermousehandles.cpp
   composer/qgscomposeritem.cpp
   composer/qgscomposeritemcommand.cpp
   composer/qgscomposeritemgroup.cpp
@@ -146,7 +155,9 @@ SET(QGIS_CORE_SRCS
   composer/qgscomposerpicture.cpp
   composer/qgscomposermap.cpp
   composer/qgscomposertable.cpp
+  composer/qgscomposertablecolumn.cpp  
   composer/qgscomposerattributetable.cpp
+  composer/qgscomposerattributetablemodel.cpp
   composer/qgscomposertexttable.cpp
   composer/qgscomposerscalebar.cpp
   composer/qgscomposershape.cpp
@@ -164,6 +175,11 @@ SET(QGIS_CORE_SRCS
   composer/qgscomposerhtml.cpp
   composer/qgscomposermultiframe.cpp
   composer/qgscomposition.cpp
+  
+  dxf/qgsdxfexport.cpp
+  dxf/qgsdxfpaintdevice.cpp
+  dxf/qgsdxfpaintengine.cpp
+  dxf/qgsdxfpallabeling.cpp
 
   pal/costcalculator.cpp
   pal/feature.cpp
@@ -295,6 +311,10 @@ ADD_FLEX_FILES(QGIS_CORE_SRCS qgsexpressionlexer.ll)
 ADD_BISON_FILES(QGIS_CORE_SRCS qgsexpressionparser.yy)
 
 SET(QGIS_CORE_MOC_HDRS
+
+  qgsmaprenderercache.h
+  qgsmaprendererjob.h
+
   qgsapplication.h
   qgsbrowsermodel.h
   qgscontexthelp.h
@@ -315,6 +335,7 @@ SET(QGIS_CORE_MOC_HDRS
   qgspluginlayer.h
   qgsproject.h
   qgsrunprocess.h
+  qgsrelationmanager.h
   qgsvectorlayer.h
   qgsvectorlayereditbuffer.h
   qgsnetworkaccessmanager.h
@@ -329,9 +350,13 @@ SET(QGIS_CORE_MOC_HDRS
   composer/qgscomposerscalebar.h
   composer/qgscomposeritem.h
   composer/qgscomposeritemgroup.h
+  composer/qgscomposermousehandles.h  
   composer/qgscomposerlabel.h
   composer/qgscomposershape.h
   composer/qgscomposerattributetable.h
+  composer/qgscomposerattributetablemodel.h  
+  composer/qgscomposertable.h  
+  composer/qgscomposertablecolumn.h
   composer/qgscomposerhtml.h
   composer/qgscomposermultiframe.h
   composer/qgscomposereffect.h
@@ -349,6 +374,7 @@ SET(QGIS_CORE_MOC_HDRS
 
   symbology-ng/qgscptcityarchive.h
   symbology-ng/qgssvgcache.h
+  symbology-ng/qgsstylev2.h
 )
 
 IF (WITH_INTERNAL_QEXTSERIALPORT)
@@ -366,6 +392,12 @@ ENDIF (QT_MOBILITY_LOCATION_FOUND)
 
 QT4_WRAP_CPP(QGIS_CORE_MOC_SRCS ${QGIS_CORE_MOC_HDRS})
 
+IF(MSVC)
+  SET_SOURCE_FILES_PROPERTIES(${QGIS_CORE_MOC_SRCS} PROPERTIES COMPILE_FLAGS "/wd4996" )
+ELSE(MSVC)
+  SET_SOURCE_FILES_PROPERTIES(${QGIS_CORE_MOC_SRCS} PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations" )
+ENDIF(MSVC)
+
 # install headers
 # install qgsconfig.h and plugin.h here so they can get into
 # the OS X framework target
@@ -379,15 +411,16 @@ SET(QGIS_CORE_HDRS
   qgscachedfeatureiterator.h
   qgscacheindex.h
   qgscacheindexfeatureid.h
-  qgscentralpointpositionmanager.h
   qgsclipper.h
   qgscontexthelp.h
   qgscoordinatetransform.h
+  qgscredentials.h
   qgsdatadefined.h
   qgsdatasourceuri.h
   qgsdataitem.h
   qgsdistancearea.h
   qgscsexception.h
+  qgseditorwidgetconfig.h
   qgserror.h
   qgsexception.h
   qgsexpression.h
@@ -408,17 +441,17 @@ SET(QGIS_CORE_HDRS
   qgsmaplayer.h
   qgsmaplayerregistry.h
   qgsmaprenderer.h
+  qgsmapsettings.h
   qgsmaptopixel.h
+  qgsmapunitscale.h
   qgsmessageoutput.h
   qgsmimedatautils.h
   qgsnetworkreplyparser.h
-  qgscredentials.h
+  qgsobjectcustomproperties.h
   qgsofflineediting.h
   qgsogcutils.h
-  qgsoverlayobjectpositionmanager.h
   qgsowsconnection.h
   qgspallabeling.h
-  qgspalobjectpositionmanager.h
   qgspluginlayer.h
   qgspluginlayerregistry.h
   qgspoint.h
@@ -434,6 +467,8 @@ SET(QGIS_CORE_HDRS
   qgsrectangle.h
   qgsrendercontext.h
   qgsrenderchecker.h
+  qgsrelation.h
+  qgsrelationmanager.h
   qgsrunprocess.h
   qgsscalecalculator.h
   qgssnapper.h
@@ -448,17 +483,40 @@ SET(QGIS_CORE_HDRS
   qgsvectorlayerfeatureiterator.h
   qgsvectorlayerimport.h
   qgsvectorlayerundocommand.h
-  qgsvectoroverlay.h
   qgstolerance.h
+  qgscrscache.h
+  qgsspatialindex.h
+  qgspaintenginehack.h
+  qgsscaleutils.h
+  qgsdbfilterproxymodel.h
+  qgsvectorlayerjoinbuffer.h
+  qgslabelsearchtree.h
+  qgssimplifymethod.h
+  qgsvectorsimplifymethod.h
 
+  qgsdiagramrendererv2.h
   diagram/qgsdiagram.h
   diagram/qgspiediagram.h
   diagram/qgstextdiagram.h
   diagram/qgshistogramdiagram.h
 
-
   composer/qgslegendmodel.h
   composer/qgscomposerlegenditem.h
+  composer/qgscomposermultiframecommand.h
+  composer/qgsscalebarstyle.h
+  composer/qgsnumericscalebarstyle.h
+  composer/qgsaddremovemultiframecommand.h
+  composer/qgsdoubleboxscalebarstyle.h
+  composer/qgscomposertable.h
+  composer/qgscomposertablecolumn.h
+  composer/qgspaperitem.h
+  composer/qgsticksscalebarstyle.h
+  composer/qgscomposerlegendstyle.h
+  composer/qgssingleboxscalebarstyle.h
+  composer/qgscomposerframe.h
+  composer/qgscomposerarrow.h
+  composer/qgscomposertexttable.h
+  composer/qgscomposeritemcommand.h
 
   raster/qgsraster.h
   raster/qgsrasterblock.h
@@ -486,6 +544,21 @@ SET(QGIS_CORE_HDRS
   raster/qgsrastershader.h
   raster/qgsrastershaderfunction.h
   raster/qgsrasterviewport.h
+  raster/qgsbilinearrasterresampler.h
+  raster/qgsbrightnesscontrastfilter.h
+  raster/qgssinglebandcolordatarenderer.h
+  raster/qgssinglebandpseudocolorrenderer.h
+  raster/qgsrasterresampler.h
+  raster/qgssinglebandgrayrenderer.h
+  raster/qgspalettedrasterrenderer.h
+  raster/qgsrasternuller.h
+  raster/qgsrasterfilewriter.h
+  raster/qgsrasterrenderer.h
+  raster/qgscubicrasterresampler.h
+  raster/qgsrasteriterator.h
+  raster/qgsrasterdrawer.h
+  raster/qgshuesaturationfilter.h
+  raster/qgsmultibandcolorrenderer.h
 
   symbology-ng/qgscategorizedsymbolrendererv2.h
   symbology-ng/qgscolorbrewerpalette.h
@@ -509,24 +582,19 @@ SET(QGIS_CORE_HDRS
   symbology-ng/qgsvectorcolorrampv2.h
   symbology-ng/qgscptcityarchive.h
   symbology-ng/qgsvectorfieldsymbollayer.h
-
-  qgsdiagramrendererv2.h
-
-  qgsspatialindex.h
-
-  qgspaintenginehack.h
-  qgsscaleutils.h
 )
 
 IF (QT_MOBILITY_LOCATION_FOUND)
   SET(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
     gps/qgsqtlocationconnection.h
+    gps/qgsgpsconnectionregistry.h
   )
 ENDIF (QT_MOBILITY_LOCATION_FOUND)
 
 INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_SOURCE_DIR}
   composer
+  dxf
   pal
   raster
   renderer
@@ -546,9 +614,9 @@ ENDIF (NOT WITH_INTERNAL_SPATIALITE)
 
 IF (WIN32)
   IF (MSVC)
-    ADD_DEFINITIONS("-DCORE_EXPORT=__declspec(dllexport)")
+    ADD_DEFINITIONS("-DCORE_EXPORT=${DLLEXPORT}")
   ELSE (MSVC)
-    ADD_DEFINITIONS("-UCORE_EXPORT \"-DCORE_EXPORT=__declspec(dllexport)\"")
+    ADD_DEFINITIONS("-UCORE_EXPORT \"-DCORE_EXPORT=${DLLEXPORT}\"")
   ENDIF (MSVC)
 ENDIF (WIN32)
 
@@ -657,4 +725,3 @@ IF (APPLE AND QGIS_MACAPP_INSTALL_DEV)
   INSTALL(TARGETS qgis_core FRAMEWORK DESTINATION ${QGIS_MACAPP_DEV_PREFIX})
   INSTALL(CODE "EXECUTE_PROCESS(COMMAND install_name_tool -id \"${QGIS_MACAPP_DEV_PREFIX}/qgis_core.framework/Versions/${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}/qgis_core\" \"$ENV{DESTDIR}${QGIS_MACAPP_DEV_PREFIX}/qgis_core.framework/qgis_core\")")
 ENDIF (APPLE AND QGIS_MACAPP_INSTALL_DEV)
-

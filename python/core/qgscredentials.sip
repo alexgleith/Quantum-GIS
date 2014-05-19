@@ -8,7 +8,7 @@ class QgsCredentials
     //! virtual destructor
     virtual ~QgsCredentials();
 
-    bool get( QString realm, QString &username, QString &password, QString message = QString::null );
+    bool get( QString realm, QString &username /In,Out/, QString &password /In,Out/, QString message = QString::null );
     void put( QString realm, QString username, QString password );
 
     //! retrieves instance
@@ -23,6 +23,13 @@ class QgsCredentials
 };
 
 
+/**
+\brief Default implementation of credentials interface
+
+This class outputs message to the standard output and retrieves input from
+standard input. Therefore it won't be the right choice for apps without
+GUI.
+*/
 class QgsCredentialsConsole : QObject, QgsCredentials
 {
 %TypeHeaderCode

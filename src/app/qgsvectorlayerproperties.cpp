@@ -46,7 +46,6 @@
 #include "qgsvectorlayerproperties.h"
 #include "qgsconfig.h"
 #include "qgsvectordataprovider.h"
-#include "qgsvectoroverlayplugin.h"
 #include "qgsquerybuilder.h"
 #include "qgsdatasourceuri.h"
 
@@ -69,7 +68,7 @@
 QgsVectorLayerProperties::QgsVectorLayerProperties(
   QgsVectorLayer *lyr,
   QWidget * parent,
-  Qt::WFlags fl
+  Qt::WindowFlags fl
 )
     : QgsOptionsDialogBase( "VectorLayerProperties", parent, fl )
     , layer( lyr )
@@ -82,8 +81,7 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   // and connecting QDialogButtonBox's accepted/rejected signals to dialog's accept/reject slots
   initOptionsBase( false );
 
-  mMaximumScaleIconLabel->setPixmap( QgsApplication::getThemePixmap( "/mActionZoomIn.png" ) );
-  mMinimumScaleIconLabel->setPixmap( QgsApplication::getThemePixmap( "/mActionZoomOut.png" ) );
+
 
   connect( buttonBox->button( QDialogButtonBox::Apply ), SIGNAL( clicked() ), this, SLOT( apply() ) );
   connect( this, SIGNAL( accepted() ), this, SLOT( apply() ) );
@@ -107,7 +105,7 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
     // Create the Labeling dialog tab
     layout = new QVBoxLayout( labelingFrame );
     layout->setMargin( 0 );
-    labelingDialog = new QgsLabelingGui( QgisApp::instance()->palLabeling(), layer, QgisApp::instance()->mapCanvas(), labelingFrame );
+    labelingDialog = new QgsLabelingGui( layer, QgisApp::instance()->mapCanvas(), labelingFrame );
     labelingDialog->layout()->setContentsMargins( -1, 0, -1, 0 );
     layout->addWidget( labelingDialog );
     labelingFrame->setLayout( layout );
@@ -249,9 +247,13 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
         layer->metadataUrlFormat()
       )
     );
+    mLayerLegendUrlLineEdit->setText( layer->legendUrl() );
+    mLayerLegendUrlFormatComboBox->setCurrentIndex(
+      mLayerLegendUrlFormatComboBox->findText(
+        layer->legendUrlFormat()
+      )
+    );
   }
-
-  setWindowTitle( tr( "Layer Properties - %1" ).arg( layer->name() ) );
 
   QSettings settings;
   // if dialog hasn't been opened/closed yet, default to Styles tab, which is used most often
@@ -262,13 +264,14 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
                        mOptStackedWidget->indexOf( mOptsPage_Style ) );
   }
 
-  restoreOptionsBaseUi();
+  QString title = QString( tr( "Layer Properties - %1" ) ).arg( layer->name() );
+  restoreOptionsBaseUi( title );
 } // QgsVectorLayerProperties ctor
 
 
 QgsVectorLayerProperties::~QgsVectorLayerProperties()
 {
-  if ( layer->hasGeometryType() )
+  if ( mOptsPage_LabelsOld && labelDialog && layer->hasGeometryType() )
   {
     disconnect( labelDialog, SIGNAL( labelSourceSet() ), this, SLOT( setLabelCheckBox() ) );
   }
@@ -356,7 +359,7 @@ void QgsVectorLayerProperties::syncToLayer( void )
                                   "layer is shown here. To enter or modify the query, click on the Query Builder button" ) );
 
   //see if we are dealing with a pg layer here
-  grpSubset->setEnabled( true );
+  mSubsetGroupBox->setEnabled( true );
   txtSubsetSQL->setText( layer->subsetString() );
   // if the user is allowed to type an adhoc query, the app will crash if the query
   // is bad. For this reason, the sql box is disabled and the query must be built
@@ -382,38 +385,91 @@ void QgsVectorLayerProperties::syncToLayer( void )
   setDisplayField( layer-> displayField() );
 
   // set up the scale based layer visibility stuff....
-  chkUseScaleDependentRendering->setChecked( layer->hasScaleBasedVisibility() );
-  bool projectScales = QgsProject::instance()->readBoolEntry( "Scales", "/useProjectScales" );
-  if ( projectScales )
+  mScaleRangeWidget->setScaleRange( 1.0 / layer->maximumScale(), 1.0 / layer->minimumScale() ); // caution: layer uses scale denoms, widget uses true scales
+  mScaleVisibilityGroupBox->setChecked( layer->hasScaleBasedVisibility() );
+  mScaleRangeWidget->setMapCanvas( QgisApp::instance()->mapCanvas() );
+
+  // get simplify drawing configuration
+  const QgsVectorSimplifyMethod& simplifyMethod = layer->simplifyMethod();
+  mSimplifyDrawingGroupBox->setChecked( simplifyMethod.simplifyHints() != QgsVectorSimplifyMethod::NoSimplification );
+  mSimplifyDrawingSpinBox->setValue( simplifyMethod.threshold() );
+
+  if ( !( layer->dataProvider()->capabilities() & QgsVectorDataProvider::SimplifyGeometries ) )
   {
-    QStringList scalesList = QgsProject::instance()->readListEntry( "Scales", "/ScalesList" );
-    cbMinimumScale->updateScales( scalesList );
-    cbMaximumScale->updateScales( scalesList );
+    mSimplifyDrawingAtProvider->setChecked( false );
+    mSimplifyDrawingAtProvider->setEnabled( false );
+    mSimplifyDrawingAtProvider->setText( QString( "%1 (%2)" ).arg( mSimplifyDrawingAtProvider->text(), tr( "Not supported" ) ) );
   }
-  cbMinimumScale->setScale( 1.0 / layer->minimumScale() );
-  cbMaximumScale->setScale( 1.0 / layer->maximumScale() );
+  else
+  {
+    mSimplifyDrawingAtProvider->setChecked( !simplifyMethod.forceLocalOptimization() );
+    mSimplifyDrawingAtProvider->setEnabled( mSimplifyDrawingGroupBox->isChecked() );
+  }
+
+  // disable simplification for point layers, now it is not implemented
+  if ( layer->geometryType() == QGis::Point )
+  {
+    mOptionsStackedWidget->removeWidget( mOptsPage_Rendering );
+    mSimplifyDrawingGroupBox->setChecked( false );
+  }
+
+  QStringList myScalesList = PROJECT_SCALES.split( "," );
+  myScalesList.append( "1:1" );
+  mSimplifyMaximumScaleComboBox->updateScales( myScalesList );
+  mSimplifyMaximumScaleComboBox->setScale( 1.0 / simplifyMethod.maximumScale() );
 
   // load appropriate symbology page (V1 or V2)
   updateSymbologyPage();
 
+  actionDialog->init();
+
   // reset fields in label dialog
   layer->label()->setFields( layer->pendingFields() );
-
-  actionDialog->init();
 
   if ( layer->hasGeometryType() )
   {
     labelingDialog->init();
-    labelDialog->init();
   }
 
-  labelCheckBox->setChecked( layer->hasLabelsEnabled() );
-  labelOptionsFrame->setEnabled( layer->hasLabelsEnabled() );
+  if ( mOptsPage_LabelsOld )
+  {
+    if ( labelDialog && layer->hasGeometryType() )
+    {
+      labelDialog->init();
+    }
+    labelCheckBox->setChecked( layer->hasLabelsEnabled() );
+    labelOptionsFrame->setEnabled( layer->hasLabelsEnabled() );
+    QObject::connect( labelCheckBox, SIGNAL( clicked( bool ) ), this, SLOT( enableLabelOptions( bool ) ) );
+  }
 
   mFieldsPropertiesDialog->init();
 
-  QObject::connect( labelCheckBox, SIGNAL( clicked( bool ) ), this, SLOT( enableLabelOptions( bool ) ) );
-} // reset()
+  if ( layer->hasLabelsEnabled() )
+  {
+    // though checked on projectRead, can reoccur after applying a style with enabled deprecated labels
+    // otherwise, the deprecated labels will render, but the tab to disable them will not show up
+    QgsProject::instance()->writeEntry( "DeprecatedLabels", "/Enabled", true );
+    // (this also overrides any '/Enabled, false' project property the user may have manually set)
+  }
+
+  // delete deprecated labels tab if not already used by project
+  // NOTE: this is not ideal, but a quick fix for QGIS 2.0 release
+  bool ok;
+  bool dl = QgsProject::instance()->readBoolEntry( "DeprecatedLabels", "/Enabled", false, &ok );
+  if ( !ok || ( ok && !dl ) ) // project not flagged or set to use deprecated labels
+  {
+    if ( mOptsPage_LabelsOld )
+    {
+      if ( labelDialog )
+      {
+        disconnect( labelDialog, SIGNAL( labelSourceSet() ), this, SLOT( setLabelCheckBox() ) );
+      }
+      delete mOptsPage_LabelsOld;
+      mOptsPage_LabelsOld = 0;
+    }
+  }
+
+} // syncToLayer()
 
 
 
@@ -427,7 +483,7 @@ void QgsVectorLayerProperties::apply()
   //
   // Set up sql subset query if applicable
   //
-  grpSubset->setEnabled( true );
+  mSubsetGroupBox->setEnabled( true );
 
   if ( txtSubsetSQL->toPlainText() != layer->subsetString() )
   {
@@ -437,9 +493,10 @@ void QgsVectorLayerProperties::apply()
   }
 
   // set up the scale based layer visibility stuff....
-  layer->toggleScaleBasedVisibility( chkUseScaleDependentRendering->isChecked() );
-  layer->setMinimumScale( 1.0 / cbMinimumScale->scale() );
-  layer->setMaximumScale( 1.0 / cbMaximumScale->scale() );
+  layer->toggleScaleBasedVisibility( mScaleVisibilityGroupBox->isChecked() );
+  // caution: layer uses scale denoms, widget uses true scales
+  layer->setMaximumScale( 1.0 / mScaleRangeWidget->minimumScale() );
+  layer->setMinimumScale( 1.0 / mScaleRangeWidget->maximumScale() );
 
   // provider-specific options
   if ( layer->dataProvider() )
@@ -463,9 +520,15 @@ void QgsVectorLayerProperties::apply()
 
   actionDialog->apply();
 
-  if ( labelDialog )
-    labelDialog->apply();
-  layer->enableLabels( labelCheckBox->isChecked() );
+  if ( mOptsPage_LabelsOld )
+  {
+    if ( labelDialog )
+    {
+      labelDialog->apply();
+    }
+    layer->enableLabels( labelCheckBox->isChecked() );
+  }
+
   layer->setLayerName( mLayerOrigNameLineEdit->text() );
 
   // Apply fields settings
@@ -480,12 +543,6 @@ void QgsVectorLayerProperties::apply()
   //apply diagram settings
   diagramPropertiesDialog->apply();
 
-  //apply overlay dialogs
-  for ( QList<QgsApplyDialog*>::iterator it = mOverlayDialogs.begin(); it != mOverlayDialogs.end(); ++it )
-  {
-    ( *it )->apply();
-  }
-
   //layer title and abstract
   layer->setTitle( mLayerTitleLineEdit->text() );
   layer->setAbstract( mLayerAbstractTextEdit->toPlainText() );
@@ -498,12 +555,25 @@ void QgsVectorLayerProperties::apply()
   layer->setMetadataUrl( mLayerMetadataUrlLineEdit->text() );
   layer->setMetadataUrlType( mLayerMetadataUrlTypeComboBox->currentText() );
   layer->setMetadataUrlFormat( mLayerMetadataUrlFormatComboBox->currentText() );
+  layer->setLegendUrl( mLayerLegendUrlLineEdit->text() );
+  layer->setLegendUrlFormat( mLayerLegendUrlFormatComboBox->currentText() );
+
+  //layer simplify drawing configuration
+  QgsVectorSimplifyMethod::SimplifyHints simplifyHints = QgsVectorSimplifyMethod::NoSimplification;
+  if ( mSimplifyDrawingGroupBox->isChecked() )
+  {
+    simplifyHints |= QgsVectorSimplifyMethod::GeometrySimplification;
+    if ( mSimplifyDrawingSpinBox->value() > 1 ) simplifyHints |= QgsVectorSimplifyMethod::AntialiasingSimplification;
+  }
+  QgsVectorSimplifyMethod simplifyMethod = layer->simplifyMethod();
+  simplifyMethod.setSimplifyHints( simplifyHints );
+  simplifyMethod.setThreshold( mSimplifyDrawingSpinBox->value() );
+  simplifyMethod.setForceLocalOptimization( !mSimplifyDrawingAtProvider->isChecked() );
+  simplifyMethod.setMaximumScale( 1.0 / mSimplifyMaximumScaleComboBox->scale() );
+  layer->setSimplifyMethod( simplifyMethod );
 
   // update symbology
   emit refreshLegend( layer->id(), QgsLegendItem::DontChange );
-
-  //no need to delete the old one, maplayer will do it if needed
-  layer->setCacheImage( 0 );
 
   layer->triggerRepaint();
   // notify the project we've made a change
@@ -718,6 +788,8 @@ void QgsVectorLayerProperties::on_pbnLoadStyle_clicked()
   QFileInfo myFI( myFileName );
   QString myPath = myFI.path();
   myQSettings.setValue( "style/lastStyleDir", myPath );
+
+  activateWindow(); // set focus back to properties dialog
 }
 
 
@@ -899,34 +971,6 @@ void QgsVectorLayerProperties::showListOfStylesFromDatabase()
 
 }
 
-QList<QgsVectorOverlayPlugin*> QgsVectorLayerProperties::overlayPlugins() const
-{
-  QList<QgsVectorOverlayPlugin*> pluginList;
-
-  QgisPlugin* thePlugin = 0;
-  QgsVectorOverlayPlugin* theOverlayPlugin = 0;
-
-  QList<QgsPluginMetadata*> pluginData = QgsPluginRegistry::instance()->pluginData();
-  for ( QList<QgsPluginMetadata*>::iterator it = pluginData.begin(); it != pluginData.end(); ++it )
-  {
-    if ( *it )
-    {
-      thePlugin = ( *it )->plugin();
-      if ( thePlugin && thePlugin->type() == QgisPlugin::VECTOR_OVERLAY )
-      {
-        theOverlayPlugin = dynamic_cast<QgsVectorOverlayPlugin *>( thePlugin );
-        if ( theOverlayPlugin )
-        {
-          pluginList.push_back( theOverlayPlugin );
-        }
-      }
-    }
-  }
-
-  return pluginList;
-}
-
-
 void QgsVectorLayerProperties::on_mButtonAddJoin_clicked()
 {
   QgsAddJoinDialog d( layer );
@@ -954,6 +998,7 @@ void QgsVectorLayerProperties::on_mButtonAddJoin_clicked()
       pbnQueryBuilder->setEnabled( layer && layer->dataProvider() && layer->dataProvider()->supportsSubsetString() &&
                                    !layer->isEditable() && layer->vectorJoins().size() < 1 );
     }
+    mFieldsPropertiesDialog->init();
   }
 }
 
@@ -980,7 +1025,12 @@ void QgsVectorLayerProperties::addJoinToTreeWidget( const QgsVectorJoinInfo& joi
   else
     joinItem->setText( 2, join.targetFieldName );
 
+  if ( join.memoryCache )
+    joinItem->setText( 3, QChar( 0x2714 ) );
+
   mJoinTreeWidget->addTopLevelItem( joinItem );
+  for ( int c = 0; c < 3; c++ )
+    mJoinTreeWidget->resizeColumnToContents( c );
 }
 
 void QgsVectorLayerProperties::on_mButtonRemoveJoin_clicked()
@@ -995,6 +1045,7 @@ void QgsVectorLayerProperties::on_mButtonRemoveJoin_clicked()
   mJoinTreeWidget->takeTopLevelItem( mJoinTreeWidget->indexOfTopLevelItem( currentJoinItem ) );
   pbnQueryBuilder->setEnabled( layer && layer->dataProvider() && layer->dataProvider()->supportsSubsetString() &&
                                !layer->isEditable() && layer->vectorJoins().size() < 1 );
+  mFieldsPropertiesDialog->init();
 }
 
 
@@ -1052,12 +1103,14 @@ void QgsVectorLayerProperties::enableLabelOptions( bool theFlag )
   labelOptionsFrame->setEnabled( theFlag );
 }
 
-void QgsVectorLayerProperties::on_mMinimumScaleSetCurrentPushButton_clicked()
+void QgsVectorLayerProperties::on_mSimplifyDrawingGroupBox_toggled( bool checked )
 {
-  cbMinimumScale->setScale( 1.0 / QgisApp::instance()->mapCanvas()->mapRenderer()->scale() );
-}
-
-void QgsVectorLayerProperties::on_mMaximumScaleSetCurrentPushButton_clicked()
-{
-  cbMaximumScale->setScale( 1.0 / QgisApp::instance()->mapCanvas()->mapRenderer()->scale() );
+  if ( !( layer->dataProvider()->capabilities() & QgsVectorDataProvider::SimplifyGeometries ) )
+  {
+    mSimplifyDrawingAtProvider->setEnabled( false );
+  }
+  else
+  {
+    mSimplifyDrawingAtProvider->setEnabled( checked );
+  }
 }

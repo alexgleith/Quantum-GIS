@@ -23,7 +23,7 @@
 
 
 /**A map tool for showing or hidding a feature's label*/
-class QgsMapToolShowHideLabels : public QgsMapToolLabel
+class APP_EXPORT QgsMapToolShowHideLabels : public QgsMapToolLabel
 {
     Q_OBJECT
 
@@ -52,9 +52,6 @@ class QgsMapToolShowHideLabels : public QgsMapToolLabel
     QgsRubberBand* mRubberBand;
 
   private:
-
-    //! Pointer to map renderer
-    QgsMapRenderer* mRender;
 
     //! Select valid labels to pin or unpin
     void showHideLabels( QMouseEvent * e );

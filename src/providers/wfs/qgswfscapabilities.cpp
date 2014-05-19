@@ -15,6 +15,7 @@
 #include "qgswfscapabilities.h"
 #include "qgsexpression.h"
 #include "qgslogger.h"
+#include "qgsmessagelog.h"
 #include "qgsnetworkaccessmanager.h"
 #include "qgsogcutils.h"
 #include <QDomDocument>
@@ -25,11 +26,9 @@
 
 static const QString WFS_NAMESPACE = "http://www.opengis.net/wfs";
 
-QgsWFSCapabilities::QgsWFSCapabilities( QString theUri ) :
-    //QObject( parent ),
-    //mConnName( connName ),
-    mCapabilitiesReply( 0 ),
-    mErrorCode( QgsWFSCapabilities::NoError )
+QgsWFSCapabilities::QgsWFSCapabilities( QString theUri )
+    : mCapabilitiesReply( 0 )
+    , mErrorCode( QgsWFSCapabilities::NoError )
 {
   mUri.setEncodedUri( theUri );
   QgsDebugMsg( "theUri = " + theUri );
@@ -38,7 +37,7 @@ QgsWFSCapabilities::QgsWFSCapabilities( QString theUri ) :
   QgsDebugMsg( "mBaseUrl = " + mBaseUrl );
 
   //find out the server URL
-  /*
+#if 0
   QSettings settings;
   QString key = "/Qgis/connections-wfs/" + mConnName + "/url";
   mUri = settings.value( key ).toString();
@@ -54,7 +53,7 @@ QgsWFSCapabilities::QgsWFSCapabilities( QString theUri ) :
   {
     mUri.append( "&" );
   }
-  */
+#endif
 }
 
 QString QgsWFSCapabilities::prepareUri( QString uri )
@@ -106,7 +105,12 @@ QString QgsWFSCapabilities::uriGetFeature( QString typeName, QString crsString, 
     {
       //if not, if must be a QGIS expression
       QgsExpression filterExpression( filter );
-      QDomElement filterElem = QgsOgcUtils::expressionToOgcFilter( filterExpression, filterDoc );
+      QString errorMsg;
+      QDomElement filterElem = QgsOgcUtils::expressionToOgcFilter( filterExpression, filterDoc, &errorMsg );
+      if ( !errorMsg.isEmpty() )
+      {
+        QgsMessageLog::logMessage( "Expression to OGC Filter error: " + errorMsg, "WFS" );
+      }
       if ( !filterElem.isNull() )
       {
         filterDoc.appendChild( filterElem );
@@ -120,20 +124,36 @@ QString QgsWFSCapabilities::uriGetFeature( QString typeName, QString crsString, 
   if ( !bBox.isEmpty() )
   {
     bBoxString = QString( "&BBOX=%1,%2,%3,%4" )
-                 .arg( bBox.xMinimum(), 0, 'f' )
-                 .arg( bBox.yMinimum(), 0, 'f' )
-                 .arg( bBox.xMaximum(), 0, 'f' )
-                 .arg( bBox.yMaximum(), 0, 'f' );
+                 .arg( qgsDoubleToString( bBox.xMinimum() ) )
+                 .arg( qgsDoubleToString( bBox.yMinimum() ) )
+                 .arg( qgsDoubleToString( bBox.xMaximum() ) )
+                 .arg( qgsDoubleToString( bBox.yMaximum() ) );
   }
 
   QString uri = mBaseUrl;
 
   //add a wfs layer to the map
   uri += "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature&TYPENAME=" + typeName + crsString + bBoxString + filterString;
+
+  //add authorization information
+  if ( mUri.hasParam( "username" ) && mUri.hasParam( "password" ) )
+  {
+    uri += "&username=" + mUri.param( "username" );
+    uri += "&password=" + mUri.param( "password" );
+  }
   QgsDebugMsg( uri );
   return uri;
 }
 
+void QgsWFSCapabilities::setAuthorization( QNetworkRequest &request ) const
+{
+  QgsDebugMsg( "entered" );
+  if ( mUri.hasParam( "username" ) && mUri.hasParam( "password" ) )
+  {
+    QgsDebugMsg( "setAuthorization " + mUri.param( "username" ) );
+    request.setRawHeader( "Authorization", "Basic " + QString( "%1:%2" ).arg( mUri.param( "username" ) ).arg( mUri.param( "password" ) ).toAscii().toBase64() );
+  }
+}
 
 void QgsWFSCapabilities::requestCapabilities()
 {
@@ -141,6 +161,7 @@ void QgsWFSCapabilities::requestCapabilities()
   mErrorMessage.clear();
 
   QNetworkRequest request( uriGetCapabilities() );
+  setAuthorization( request );
   request.setAttribute( QNetworkRequest::CacheSaveControlAttribute, true );
   mCapabilitiesReply = QgsNetworkAccessManager::instance()->get( request );
   connect( mCapabilitiesReply, SIGNAL( finished() ), this, SLOT( capabilitiesReplyFinished() ) );
@@ -148,8 +169,7 @@ void QgsWFSCapabilities::requestCapabilities()
 
 void QgsWFSCapabilities::capabilitiesReplyFinished()
 {
-  QNetworkReply* reply = mCapabilitiesReply;
-
+  QNetworkReply *reply = mCapabilitiesReply;
   reply->deleteLater();
   mCapabilitiesReply = 0;
 
@@ -168,6 +188,7 @@ void QgsWFSCapabilities::capabilitiesReplyFinished()
   {
     QgsDebugMsg( "redirecting to " + redirect.toUrl().toString() );
     QNetworkRequest request( redirect.toUrl() );
+    setAuthorization( request );
     request.setAttribute( QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferNetwork );
     request.setAttribute( QNetworkRequest::CacheSaveControlAttribute, true );
 

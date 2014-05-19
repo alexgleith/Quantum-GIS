@@ -22,6 +22,7 @@
 #include "qgsfield.h"
 #include "qgsmapcanvasmap.h"
 #include "qgsmaplayerregistry.h"
+#include "qgspluginlayer.h"
 #include "qgsrasterlayer.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
@@ -142,6 +143,15 @@ void QgsLegendLayer::refreshSymbology( const QString& key )
     QgsRasterLayer* rlayer = qobject_cast<QgsRasterLayer *>( theMapLayer );
     rasterLayerSymbology( rlayer ); // get and change symbology
   }
+  else if ( theMapLayer->type() == QgsMapLayer::PluginLayer )
+  {
+    QgsPluginLayer* player = qobject_cast<QgsPluginLayer *>( theMapLayer );
+
+    QSize iconSize( 16, 16 );
+    SymbologyList itemList = player->legendSymbologyItems( iconSize );
+
+    changeSymbologySettings( theMapLayer, itemList );
+  }
 
   updateIcon();
 }
@@ -205,9 +215,26 @@ void QgsLegendLayer::rasterLayerSymbology( QgsRasterLayer* layer )
   SymbologyList itemList;
   QList< QPair< QString, QColor > > rasterItemList = layer->legendSymbologyItems();
   QList< QPair< QString, QColor > >::const_iterator itemIt = rasterItemList.constBegin();
-#if QT_VERSION >= 0x40700
   itemList.reserve( rasterItemList.size() );
-#endif
+
+  // GetLegendGraphics in case of WMS service... pixmap can return null if GetLegendGraphics
+  // is not supported by the server
+  QgsDebugMsg( QString( "layer providertype:: %1" ).arg( layer->providerType() ) );
+  if ( layer->providerType() == "wms" )
+  {
+    double currentScale = legend()->canvas()->scale();
+
+    QImage legendGraphic = layer->dataProvider()->getLegendGraphic( currentScale );
+    if ( !legendGraphic.isNull() )
+    {
+      QgsDebugMsg( QString( "downloaded legend with dimension width:" ) + QString::number( legendGraphic.width() ) + QString( " and Height:" ) + QString::number( legendGraphic.height() ) );
+
+      if ( rasterItemList.size() == 0 )
+        itemList.reserve( 1 );
+      itemList.append( qMakePair( QString( "" ), QPixmap::fromImage( legendGraphic ) ) );
+    }
+  }
+
   // Paletted raster may have many colors, for example UInt16 may have 65536 colors
   // and it is very slow, so we limit max count
   QSize iconSize = treeWidget()->iconSize();
@@ -300,11 +327,11 @@ QPixmap QgsLegendLayer::getOriginalPixmap()
       switch ( vlayer->geometryType() )
       {
         case QGis::Point:
-          return QgsApplication::getThemePixmap( "/mIconPointLayer.png" );
+          return QgsApplication::getThemePixmap( "/mIconPointLayer.svg" );
         case QGis::Line:
-          return QgsApplication::getThemePixmap( "/mIconLineLayer.png" );
+          return QgsApplication::getThemePixmap( "/mIconLineLayer.svg" );
         case QGis::Polygon:
-          return QgsApplication::getThemePixmap( "/mIconPolygonLayer.png" );
+          return QgsApplication::getThemePixmap( "/mIconPolygonLayer.svg" );
         case QGis::NoGeometry:
           return QgsApplication::getThemePixmap( "/mIconTableLayer.png" );
         default:
@@ -321,7 +348,7 @@ QPixmap QgsLegendLayer::getOriginalPixmap()
       }
       else
       {
-        return QPixmap();
+        return QgsApplication::getThemePixmap( "/mIconRasterLayer.svg" );
       }
     }
   }
@@ -338,7 +365,7 @@ void QgsLegendLayer::addToPopupMenu( QMenu& theMenu )
   QAction *allEditsAction = QgisApp::instance()->actionAllEdits();
 
   // zoom to layer extent
-  theMenu.addAction( QgsApplication::getThemeIcon( "/mActionZoomToLayer.png" ),
+  theMenu.addAction( QgsApplication::getThemeIcon( "/mActionZoomToLayer.svg" ),
                      tr( "&Zoom to Layer Extent" ), legend(), SLOT( legendLayerZoom() ) );
   if ( lyr->type() == QgsMapLayer::RasterLayer )
   {
@@ -359,10 +386,10 @@ void QgsLegendLayer::addToPopupMenu( QMenu& theMenu )
   showInOverviewAction->blockSignals( false );
 
   // remove from canvas
-  theMenu.addAction( QgsApplication::getThemeIcon( "/mActionRemoveLayer.png" ), tr( "&Remove" ), QgisApp::instance(), SLOT( removeLayer() ) );
+  theMenu.addAction( QgsApplication::getThemeIcon( "/mActionRemoveLayer.svg" ), tr( "&Remove" ), QgisApp::instance(), SLOT( removeLayer() ) );
 
   // duplicate layer
-  QAction* duplicateLayersAction = theMenu.addAction( QgsApplication::getThemeIcon( "/mActionAddMap.png" ), tr( "&Duplicate" ), QgisApp::instance(), SLOT( duplicateLayers() ) );
+  QAction* duplicateLayersAction = theMenu.addAction( QgsApplication::getThemeIcon( "/mActionDuplicateLayer.svg" ), tr( "&Duplicate" ), QgisApp::instance(), SLOT( duplicateLayers() ) );
 
   // set layer crs
   theMenu.addAction( QgsApplication::getThemeIcon( "/mActionSetCRS.png" ), tr( "&Set Layer CRS" ), QgisApp::instance(), SLOT( setLayerCRS() ) );
@@ -408,13 +435,7 @@ void QgsLegendLayer::addToPopupMenu( QMenu& theMenu )
 
     // save as vector file
     theMenu.addAction( tr( "Save As..." ), QgisApp::instance(), SLOT( saveAsFile() ) );
-
-    // save selection as vector file
-    QAction* saveSelectionAsAction = theMenu.addAction( tr( "Save Selection As..." ), QgisApp::instance(), SLOT( saveSelectionAsVectorFile() ) );
-    if ( vlayer->selectedFeatureCount() == 0 )
-    {
-      saveSelectionAsAction->setEnabled( false );
-    }
+    theMenu.addAction( tr( "Save As Layer Definition File..." ), QgisApp::instance(), SLOT( saveAsLayerDefinition() ) );
 
     if ( !vlayer->isEditable() && vlayer->dataProvider()->supportsSubsetString() && vlayer->vectorJoins().isEmpty() )
       theMenu.addAction( tr( "&Filter..." ), QgisApp::instance(), SLOT( layerSubsetString() ) );
@@ -430,6 +451,7 @@ void QgsLegendLayer::addToPopupMenu( QMenu& theMenu )
   else if ( lyr->type() == QgsMapLayer::RasterLayer )
   {
     theMenu.addAction( tr( "Save As..." ), QgisApp::instance(), SLOT( saveAsRasterFile() ) );
+    theMenu.addAction( tr( "Save As Layer Definition File..." ), QgisApp::instance(), SLOT( saveAsLayerDefinition() ) );
   }
   else if ( lyr->type() == QgsMapLayer::PluginLayer && legend()->selectedLayers().count() == 1 )
   {
@@ -467,7 +489,6 @@ void QgsLegendLayer::showInOverview()
   setInOverview( ! isInOverview() );
 
   legend()->updateMapCanvasLayerSet();
-  legend()->updateOverview();
 }
 
 QString QgsLegendLayer::nameFromLayer( QgsMapLayer* layer )
@@ -496,9 +517,9 @@ QString QgsLegendLayer::label()
 {
   QString name = mLyr.layer()->name();
   QgsVectorLayer *vlayer = dynamic_cast<QgsVectorLayer *>( mLyr.layer() );
-  if ( mShowFeatureCount && vlayer && vlayer->featureCount() >= 0 )
+  if ( mShowFeatureCount && vlayer && vlayer->pendingFeatureCount() >= 0 )
   {
-    name += QString( " [%1]" ).arg( vlayer->featureCount() );
+    name += QString( " [%1]" ).arg( vlayer->pendingFeatureCount() );
   }
   return name;
 }
@@ -567,7 +588,6 @@ void QgsLegendLayer::updateItemListCountV2( SymbologyList& itemList, QgsVectorLa
 
   QgsLegendSymbolList symbolList = renderer->legendSymbolItems();
   QgsLegendSymbolList::const_iterator symbolIt = symbolList.constBegin();
-  symbolIt = symbolList.constBegin();
   for ( ; symbolIt != symbolList.constEnd(); ++symbolIt )
   {
     itemList.push_back( qMakePair( symbolIt->first + " [" + QString::number( layer->featureCount( symbolIt->second ) ) + "]", itemMap[symbolIt->first] ) );

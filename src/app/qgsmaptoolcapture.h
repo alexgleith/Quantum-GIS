@@ -30,7 +30,7 @@ class QgsVertexMarker;
 class QgsMapLayer;
 class QgsGeometryValidator;
 
-class QgsMapToolCapture : public QgsMapToolEdit
+class APP_EXPORT QgsMapToolCapture : public QgsMapToolEdit
 {
     Q_OBJECT
 
@@ -61,9 +61,6 @@ class QgsMapToolCapture : public QgsMapToolEdit
 
     virtual void keyPressEvent( QKeyEvent* e );
 
-    //! Resize rubber band
-    virtual void renderComplete();
-
     //! deactive the tool
     virtual void deactivate();
 
@@ -84,6 +81,7 @@ class QgsMapToolCapture : public QgsMapToolEdit
 
     void startCapturing();
     void stopCapturing();
+    void deleteTempRubberBand();
 
     CaptureMode mode() { return mCaptureMode; }
 
@@ -104,6 +102,9 @@ class QgsMapToolCapture : public QgsMapToolEdit
     /** rubber band for polylines and polygons */
     QgsRubberBand* mRubberBand;
 
+    /** temporary rubber band for polylines and polygons. this connects the last added point to the mouse cursor position */
+    QgsRubberBand* mTempRubberBand;
+
     /** List to store the points of digitised lines and polygons (in layer coordinates)*/
     QList<QgsPoint> mCaptureList;
 
@@ -115,7 +116,7 @@ class QgsMapToolCapture : public QgsMapToolEdit
 
     bool mCaptureModeFromLayer;
 
-    QList<QgsVertexMarker *> mSnappingMarkers;
+    QgsVertexMarker* mSnappingMarker;
 };
 
 #endif

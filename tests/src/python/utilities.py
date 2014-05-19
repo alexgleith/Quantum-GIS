@@ -13,13 +13,22 @@ __revision__ = '$Format:%H$'
 
 import os
 import sys
+import platform
+import tempfile
+import qgis
 from PyQt4 import QtGui, QtCore
 from qgis.core import (QgsApplication,
                        QgsCoordinateReferenceSystem,
-                       QgsVectorFileWriter)
+                       QgsVectorFileWriter,
+                       QgsFontUtils)
 from qgis.gui import QgsMapCanvas
 from qgis_interface import QgisInterface
 import hashlib
+import re
+from itertools import izip
+
+import webbrowser
+import subprocess
 
 # Support python < 2.7 via unittest2 needed for expected failure decorator.
 # Note that you should ignore unused import warnings here as these are imported
@@ -40,7 +49,8 @@ CANVAS = None
 PARENT = None
 IFACE = None
 GEOCRS = 4326  # constant for EPSG:GEOCRS Geographic CRS id
-GOOGLECRS = 900913  # constant for EPSG:GOOGLECRS Google Mercator id
+
+FONTSLOADED = False
 
 
 def assertHashesForFile(theHashes, theFilename):
@@ -141,6 +151,11 @@ def unitTestDataPath(theSubdir=None):
     return myPath
 
 
+def svgSymbolsPath():
+    return os.path.abspath(
+        os.path.join(unitTestDataPath(), '..', '..', 'images', 'svg'))
+
+
 def setCanvasCrs(theEpsgId, theOtfpFlag=False):
     """Helper to set the crs for the CANVAS before a test is run.
 
@@ -160,13 +175,14 @@ def setCanvasCrs(theEpsgId, theOtfpFlag=False):
     # Reproject all layers to WGS84 geographic CRS
     CANVAS.mapRenderer().setDestinationCrs(myCrs)
 
+
 def writeShape(theMemoryLayer, theFileName):
     myFileName = os.path.join(str(QtCore.QDir.tempPath()), theFileName)
     print myFileName
     # Explicitly giving all options, not really needed but nice for clarity
-    myErrorMessage = QtCore.QString()
-    myOptions = QtCore.QStringList()
-    myLayerOptions = QtCore.QStringList()
+    myErrorMessage = ''
+    myOptions = []
+    myLayerOptions = []
     mySelectedOnlyFlag = False
     mySkipAttributesFlag = False
     myGeoCrs = QgsCoordinateReferenceSystem()
@@ -183,3 +199,97 @@ def writeShape(theMemoryLayer, theFileName):
         myLayerOptions,
         mySkipAttributesFlag)
     assert myResult == QgsVectorFileWriter.NoError
+
+
+def compareWkt(a, b, tol=0.000001):
+    r0 = re.compile( "-?\d+(?:\.\d+)?(?:[eE]\d+)?" )
+    r1 = re.compile( "\s*,\s*" )
+
+    # compare the structure
+    a0 = r1.sub( ",", r0.sub( "#", a ) )
+    b0 = r1.sub( ",", r0.sub( "#", b ) )
+    if a0 != b0:
+        return False
+
+    # compare the numbers with given tolerance
+    a0 = r0.findall( a )
+    b0 = r0.findall( b )
+    if len(a0) != len(b0):
+        return False
+
+    for (a1,b1) in izip(a0,b0):
+        if abs(float(a1)-float(b1))>tol:
+            return False
+
+    return True
+
+
+def getTempfilePath(sufx='png'):
+    """
+    :returns: Path to empty tempfile ending in defined suffix
+    Caller should delete tempfile if not used
+    """
+    tmp = tempfile.NamedTemporaryFile(
+        suffix=".{0}".format(sufx), delete=False)
+    filepath = tmp.name
+    tmp.close()
+    return filepath
+
+
+def getExecutablePath(exe):
+    """
+    :param exe: Name of executable, e.g. lighttpd
+    :returns: Path to executable
+    """
+    exe_exts = []
+    if (platform.system().lower().startswith('win') and
+            "PATHEXT" in os.environ):
+        exe_exts = os.environ["PATHEXT"].split(os.pathsep)
+
+    for path in os.environ["PATH"].split(os.pathsep):
+        exe_path = os.path.join(path, exe)
+        if os.path.exists(exe_path):
+            return exe_path
+        for ext in exe_exts:
+            if os.path.exists(exe_path + ext):
+                return exe_path
+    return ''
+
+
+def getTestFontFamily():
+    return QgsFontUtils.standardTestFontFamily()
+
+
+def getTestFont(style='Roman', size=12):
+    """Only Roman and Bold are loaded by default
+    Others available: Oblique, Bold Oblique
+    """
+    if not FONTSLOADED:
+        loadTestFonts()
+    return QgsFontUtils.getStandardTestFont(style, size)
+
+
+def loadTestFonts():
+    if QGISAPP is None:
+        getQgisTestApp()
+
+    global FONTSLOADED  # pylint: disable=W0603
+    if FONTSLOADED is False:
+        QgsFontUtils.loadStandardTestFonts(['Roman', 'Bold'])
+        msg = getTestFontFamily() + ' base test font styles could not be loaded'
+        res = (QgsFontUtils.fontFamilyHasStyle(getTestFontFamily(), 'Roman')
+               and QgsFontUtils.fontFamilyHasStyle(getTestFontFamily(), 'Bold'))
+        assert res, msg
+        FONTSLOADED = True
+
+
+def openInBrowserTab(url):
+    if sys.platform[:3] in ('win', 'dar'):
+        webbrowser.open_new_tab(url)
+    else:
+        # some Linux OS pause execution on webbrowser open, so background it
+        cmd = 'import webbrowser;' \
+              'webbrowser.open_new_tab("{0}")'.format(url)
+        subprocess.Popen([sys.executable, "-c", cmd],
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)

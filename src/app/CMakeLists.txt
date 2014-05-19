@@ -1,5 +1,4 @@
 SET(QGIS_APP_SRCS
-  main.cpp
   qgisapp.cpp
   qgisappinterface.cpp
   qgisappstylesheet.cpp
@@ -28,6 +27,7 @@ SET(QGIS_APP_SRCS
   qgsdecorationscalebardialog.cpp
   qgsdecorationgrid.cpp
   qgsdecorationgriddialog.cpp
+  qgsdxfexportdialog.cpp
   qgsformannotationdialog.cpp
   qgshtmlannotationdialog.cpp
   qgsdelattrdialog.cpp
@@ -44,10 +44,12 @@ SET(QGIS_APP_SRCS
   qgslabelpreview.cpp
   qgsloadstylefromdbdialog.cpp
   qgssavestyletodbdialog.cpp
+  qgsguivectorlayertools.cpp
 
   qgsmaptooladdfeature.cpp
   qgsmaptooladdpart.cpp
   qgsmaptooladdring.cpp
+  qgsmaptoolfillring.cpp
   qgsmaptoolannotation.cpp
   qgsmaptoolcapture.cpp
   qgsmaptoolchangelabelproperties.cpp
@@ -77,6 +79,7 @@ SET(QGIS_APP_SRCS
   qgsmaptoolselectutils.cpp
   qgsmaptoolsimplify.cpp
   qgsmaptoolsplitfeatures.cpp
+  qgsmaptoolsplitparts.cpp
   qgsmaptoolsvgannotation.cpp
   qgsmaptooltextannotation.cpp
   qgsmaptoolvertexedit.cpp
@@ -99,6 +102,7 @@ SET(QGIS_APP_SRCS
   qgsrasterlayerproperties.cpp
   qgstextannotationdialog.cpp
   qgsshortcutsmanager.cpp
+  qgsguivectorlayertools.h
   qgssnappingdialog.cpp
   qgssvgannotationdialog.cpp
   qgsundowidget.cpp
@@ -130,9 +134,6 @@ SET(QGIS_APP_SRCS
   legend/qgsapplegendinterface.cpp
   legend/qgslegenditem.cpp
   legend/qgslegendlayer.cpp
-  legend/qgslegendpropertygroup.cpp
-  legend/qgslegendpropertyitem.cpp
-  legend/qgslegendsymbologygroup.cpp
   legend/qgslegendsymbologyitem.cpp
   legend/qgslayerorder.cpp
 
@@ -152,6 +153,7 @@ SET(QGIS_APP_SRCS
   pluginmanager/qgspluginmanager_texts.cpp
   pluginmanager/qgsapppluginmanagerinterface.cpp
   pluginmanager/qgspluginsortfilterproxymodel.cpp
+  pluginmanager/qgspluginitemdelegate.cpp
 
   qgsnewspatialitelayerdialog.cpp
 )
@@ -171,6 +173,7 @@ SET (QGIS_APP_MOC_HDRS
   qgsattributetabledialog.h
   qgsbookmarks.h
   qgsbrowserdockwidget.h
+  qgsclipboard.h
   qgsconfigureshortcutsdialog.h
   qgscustomization.h
   qgscustomprojectiondialog.h
@@ -186,6 +189,7 @@ SET (QGIS_APP_MOC_HDRS
   qgsdelattrdialog.h
   qgsdiagramproperties.h
   qgsdisplayangle.h
+  qgsdxfexportdialog.h
   qgsfeatureaction.h
   qgsfieldcalculator.h
   qgsfieldsproperties.h
@@ -204,6 +208,7 @@ SET (QGIS_APP_MOC_HDRS
   qgsmaptoolcapture.h
   qgsmaptooladdpart.h
   qgsmaptooladdring.h
+  qgsmaptoolfillring.h
   qgsmaptoolchangelabelproperties.h
   qgsmaptooldeletepart.h
   qgsmaptooldeletering.h
@@ -226,6 +231,7 @@ SET (QGIS_APP_MOC_HDRS
   qgsmaptoolselectrectangle.h
   qgsmaptoolsimplify.h
   qgsmaptoolsplitfeatures.h
+  qgsmaptoolsplitparts.h
   qgsmaptoolvertexedit.h
 
   nodetool/qgsmaptoolnodetool.h
@@ -284,6 +290,7 @@ SET (QGIS_APP_MOC_HDRS
   pluginmanager/qgspluginmanager.h
   pluginmanager/qgsapppluginmanagerinterface.h
   pluginmanager/qgspluginsortfilterproxymodel.h
+  pluginmanager/qgspluginitemdelegate.h
 
   qgsnewspatialitelayerdialog.h
   )
@@ -366,6 +373,10 @@ SET(IMAGE_RCCS ../../images/images.qrc)
 
 QT4_ADD_RESOURCES(IMAGE_RCC_SRCS ${IMAGE_RCCS})
 
+# add test resources, e.g. standard test font
+SET(TEST_RCCS ../../tests/testdata/testdata.qrc)
+QT4_ADD_RESOURCES(TEST_RCC_SRCS ${TEST_RCCS})
+
 QT4_WRAP_CPP(QGIS_APP_MOC_SRCS ${QGIS_APP_MOC_HDRS})
 
 IF (WIN32)
@@ -395,9 +406,19 @@ ENDIF (WIN32)
 
 IF(PEDANTIC)
   # disable deprecation warnings
-  IF(NOT MSVC)
-    SET_SOURCE_FILES_PROPERTIES(qgisappinterface.cpp PROPERTIES COMPILE_FLAGS -Wno-deprecated)
-  ENDIF(NOT MSVC)
+  IF(MSVC)
+    SET_SOURCE_FILES_PROPERTIES(
+        qgisappinterface.cpp
+        ${CMAKE_BINARY_DIR}/src/app/moc_qgisappinterface.cxx
+	PROPERTIES COMPILE_FLAGS "/wd4996"
+    )
+  ELSE(MSVC)
+    SET_SOURCE_FILES_PROPERTIES(
+        qgisappinterface.cpp
+        ${CMAKE_BINARY_DIR}/src/app/moc_qgisappinterface.cxx
+        PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations"
+    )
+  ENDIF(MSVC)
 ENDIF(PEDANTIC)
 
 INCLUDE_DIRECTORIES(
@@ -410,8 +431,8 @@ INCLUDE_DIRECTORIES(
   ../analysis/raster ../analysis/openstreetmap
   ../core
   ../core/gps
-  ../core/composer ../core/raster ../core/symbology-ng
-  ../gui ../gui/symbology-ng ../gui/attributetable ../gui/raster
+  ../core/composer ../core/dxf ../core/raster ../core/symbology-ng
+  ../gui ../gui/symbology-ng ../gui/attributetable ../gui/raster ../gui/editorwidgets ../gui/editorwidgets/core
   ../plugins
   ../python
   gps
@@ -444,10 +465,48 @@ ENDIF (POSTGRES_FOUND)
 
 #############
 IF (ANDROID)
-  ADD_LIBRARY(${QGIS_APP_NAME} SHARED ${QGIS_APP_SRCS} ${QGIS_APP_MOC_SRCS} ${QGIS_APP_HDRS} ${QGIS_APP_MOC_HDRS} ${IMAGE_RCC_SRCS})
+  ADD_LIBRARY(${QGIS_APP_NAME} SHARED main.cpp ${QGIS_APP_SRCS} ${QGIS_APP_MOC_SRCS} ${QGIS_APP_HDRS} ${QGIS_APP_MOC_HDRS} ${IMAGE_RCC_SRCS} ${TEST_RCC_SRCS})
 ELSE (ANDROID)
-  ADD_EXECUTABLE(${QGIS_APP_NAME} MACOSX_BUNDLE WIN32 ${QGIS_APP_SRCS} ${QGIS_APP_MOC_SRCS} ${IMAGE_RCC_SRCS})
+  ADD_EXECUTABLE(${QGIS_APP_NAME} MACOSX_BUNDLE WIN32 main.cpp ${QGIS_APP_SRCS} ${QGIS_APP_MOC_SRCS} ${IMAGE_RCC_SRCS} ${TEST_RCC_SRCS})
 ENDIF (ANDROID)
+
+
+QT4_WRAP_CPP(tst_moc_srcs maprenderertest.h)
+ADD_EXECUTABLE(maprenderertest maprenderertest.cpp ${tst_moc_srcs})
+TARGET_LINK_LIBRARIES(maprenderertest   qgis_core qgis_gui)
+
+IF (WIN32)
+  IF (MSVC)
+    ADD_DEFINITIONS("-DAPP_EXPORT=${DLLEXPORT}")
+  ELSE (MSVC)
+    ADD_DEFINITIONS("-UAPP_EXPORT \"-DAPP_EXPORT=${DLLEXPORT}\"")
+  ENDIF (MSVC)
+ENDIF (WIN32)
+
+# shared library used by tests - TODO: use it also for qgis executable?
+ADD_LIBRARY(qgis_app SHARED ${QGIS_APP_SRCS} ${QGIS_APP_MOC_SRCS} ${QGIS_APP_HDRS} ${QGIS_APP_MOC_HDRS} ${IMAGE_RCC_SRCS})
+
+TARGET_LINK_LIBRARIES(qgis_app
+  ${QWT_LIBRARY}
+  ${QT_QTSQL_LIBRARY}
+  ${QT_QTUITOOLS_LIBRARY}
+  ${QT_QTWEBKIT_LIBRARY}
+  #should only be needed for win
+  ${QT_QTMAIN_LIBRARY}
+  ${QWTPOLAR_LIBRARY}
+  ${GDAL_LIBRARY}
+  qgis_core
+  qgis_gui
+  qgis_analysis
+)
+
+IF (APPLE)
+  TARGET_LINK_LIBRARIES(qgis_app ${APP_SERVICES_LIBRARY})
+ENDIF(APPLE)
+
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+  SET_TARGET_PROPERTIES(qgis_app PROPERTIES STATIC_LIBRARY_FLAGS "/machine:x64")
+ENDIF(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
 
 TARGET_LINK_LIBRARIES(${QGIS_APP_NAME}
   ${QWT_LIBRARY}
@@ -470,6 +529,7 @@ ENDIF (ANDROID)
 IF(WIN32)
   ADD_DEFINITIONS(-DQWT_DLL)
   TARGET_LINK_LIBRARIES(${QGIS_APP_NAME} DbgHelp)
+  TARGET_LINK_LIBRARIES(qgis_app DbgHelp)
 ENDIF(WIN32)
 
 IF (APPLE)
@@ -480,6 +540,11 @@ IF (APPLE)
     INSTALL_RPATH_USE_LINK_PATH true
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/mac/app.info.plist.in")
 ENDIF(APPLE)
+
+IF (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  FIND_LIBRARY(EXECINFO_LIBRARY NAMES execinfo)
+  TARGET_LINK_LIBRARIES(${QGIS_APP_NAME} ${EXECINFO_LIBRARY})
+ENDIF (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
 
 IF (POSTGRES_FOUND)
   TARGET_LINK_LIBRARIES (${QGIS_APP_NAME} ${POSTGRES_LIBRARY})

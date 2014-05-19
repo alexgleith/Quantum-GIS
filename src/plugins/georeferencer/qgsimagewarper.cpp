@@ -86,7 +86,7 @@ bool QgsImageWarper::createDestinationDataset(
   char **papszOptions = NULL;
   papszOptions = CSLSetNameValue( papszOptions, "COMPRESS", compression.toAscii() );
   hDstDS = GDALCreate( driver,
-                       QFile::encodeName( outputName ).constData(), resX, resY,
+                       TO8F( outputName ), resX, resY,
                        GDALGetRasterCount( hSrcDS ),
                        GDALGetRasterDataType( GDALGetRasterBand( hSrcDS, 1 ) ),
                        papszOptions );
@@ -282,7 +282,8 @@ void *QgsImageWarper::addGeoToPixelTransform( GDALTransformerFunc GDALTransforme
   if ( !GDALInvGeoTransform( chain->adfGeotransform, chain->adfInvGeotransform ) )
   {
     // Error handling if inversion fails - although the inverse transform is not needed for warp operation
-    return NULL;
+    delete chain;
+    return 0;
   }
   return ( void* )chain;
 }

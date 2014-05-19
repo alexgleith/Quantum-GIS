@@ -21,7 +21,7 @@
 DockModel::DockModel( ErrorList& theErrorList, QObject *parent = 0 ) : mErrorlist( theErrorList )
 {
   Q_UNUSED( parent );
-  mHeader << "Error" << "Layer" << "Feature ID";
+  mHeader << QObject::tr( "Error" ) << QObject::tr( "Layer" ) << QObject::tr( "Feature ID" );
 
 }
 
@@ -121,7 +121,8 @@ Qt::ItemFlags DockModel::flags( const QModelIndex &index ) const
 
 void DockModel::resetModel()
 {
-  reset();
+  beginResetModel();
+  endResetModel();
 }
 
 void DockModel::reload( const QModelIndex &index1, const QModelIndex &index2 )

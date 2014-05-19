@@ -1,4 +1,4 @@
-%Module(name=qgis.analysis,
+%Module(name=qgis._analysis,
         version=0,
         keyword_arguments="Optional")
 
@@ -10,6 +10,8 @@
 
 %Include vector/qgsgeometryanalyzer.sip
 %Include vector/qgsoverlayanalyzer.sip
+%Include vector/qgspointsample.sip
+%Include vector/qgstransectsample.sip
 %Include vector/qgszonalstatistics.sip
 
 // // %Include interpolation/Bezier3D.sip

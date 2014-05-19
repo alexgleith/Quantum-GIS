@@ -1,9 +1,9 @@
 /***************************************************************************
-    qgssymbollayerv2utils.cpp
-    ---------------------
-    begin                : November 2009
-    copyright            : (C) 2009 by Martin Dobias
-    email                : wonder dot sk at gmail dot com
+ qgssymbollayerv2utils.cpp
+ ---------------------
+ begin                : November 2009
+ copyright            : (C) 2009 by Martin Dobias
+ email                : wonder dot sk at gmail dot com
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -325,6 +325,19 @@ QPointF QgsSymbolLayerV2Utils::decodePoint( QString str )
   return QPointF( lst[0].toDouble(), lst[1].toDouble() );
 }
 
+QString QgsSymbolLayerV2Utils::encodeMapUnitScale( const QgsMapUnitScale& mapUnitScale )
+{
+  return QString( "%1,%2" ).arg( mapUnitScale.minScale ).arg( mapUnitScale.maxScale );
+}
+
+QgsMapUnitScale QgsSymbolLayerV2Utils::decodeMapUnitScale( const QString& str )
+{
+  QStringList lst = str.split( ',' );
+  if ( lst.count() != 2 )
+    return QgsMapUnitScale();
+  return QgsMapUnitScale( lst[0].toDouble(), lst[1].toDouble() );
+}
+
 QString QgsSymbolLayerV2Utils::encodeOutputUnit( QgsSymbolV2::OutputUnit unit )
 {
   switch ( unit )
@@ -349,7 +362,7 @@ QgsSymbolV2::OutputUnit QgsSymbolLayerV2Utils::decodeOutputUnit( QString str )
     return QgsSymbolV2::MapUnit;
   }
 
-  // milimeters are default
+  // millimeters are default
   return QgsSymbolV2::MM;
 }
 
@@ -505,8 +518,20 @@ QPixmap QgsSymbolLayerV2Utils::symbolPreviewPixmap( QgsSymbolV2* symbol, QSize s
   return pixmap;
 }
 
+double QgsSymbolLayerV2Utils::estimateMaxSymbolBleed( QgsSymbolV2* symbol )
+{
+  double maxBleed = 0;
+  for ( int i = 0; i < symbol->symbolLayerCount(); i++ )
+  {
+    QgsSymbolLayerV2* layer = symbol->symbolLayer( i );
+    double layerMaxBleed = layer->estimateMaxBleed();
+    maxBleed = layerMaxBleed > maxBleed ? layerMaxBleed : maxBleed;
+  }
 
-QIcon QgsSymbolLayerV2Utils::symbolLayerPreviewIcon( QgsSymbolLayerV2* layer, QgsSymbolV2::OutputUnit u, QSize size )
+  return maxBleed;
+}
+
+QIcon QgsSymbolLayerV2Utils::symbolLayerPreviewIcon( QgsSymbolLayerV2* layer, QgsSymbolV2::OutputUnit u, QSize size, const QgsMapUnitScale& scale )
 {
   QPixmap pixmap( size );
   pixmap.fill( Qt::transparent );
@@ -514,7 +539,7 @@ QIcon QgsSymbolLayerV2Utils::symbolLayerPreviewIcon( QgsSymbolLayerV2* layer, Qg
   painter.begin( &pixmap );
   painter.setRenderHint( QPainter::Antialiasing );
   QgsRenderContext renderContext = createRenderContext( &painter );
-  QgsSymbolV2RenderContext symbolContext( renderContext, u );
+  QgsSymbolV2RenderContext symbolContext( renderContext, u, 1.0, false, 0, 0, 0, scale );
   layer->drawPreviewIcon( symbolContext, size );
   painter.end();
   return QIcon( pixmap );
@@ -573,6 +598,8 @@ void QgsSymbolLayerV2Utils::drawStippledBackround( QPainter* painter, QRect rect
 #include <cfloat>
 
 
+#if !defined(GEOS_VERSION_MAJOR) || !defined(GEOS_VERSION_MINOR) || \
+ ((GEOS_VERSION_MAJOR<3) || ((GEOS_VERSION_MAJOR==3) && (GEOS_VERSION_MINOR<3)))
 // calculate line's angle and tangent
 static bool lineInfo( QPointF p1, QPointF p2, double& angle, double& t )
 {
@@ -632,14 +659,87 @@ static QPointF linesIntersection( QPointF p1, double t1, QPointF p2, double t2 )
   y = p1.y() + t1 * ( x - p1.x() );
   return QPointF( x, y );
 }
+#endif
 
 
-QPolygonF offsetLine( QPolygonF polyline, double dist )
+QList<QPolygonF> offsetLine( QPolygonF polyline, double dist )
 {
-  QPolygonF newLine;
+  QList<QPolygonF> resultLine;
 
   if ( polyline.count() < 2 )
-    return newLine;
+  {
+    resultLine.append( polyline );
+    return resultLine;
+  }
+
+  QPolygonF newLine;
+
+  // need at least geos 3.3 for OffsetCurve tool
+#if defined(GEOS_VERSION_MAJOR) && defined(GEOS_VERSION_MINOR) && \
+ ((GEOS_VERSION_MAJOR>3) || ((GEOS_VERSION_MAJOR==3) && (GEOS_VERSION_MINOR>=3)))
+
+  unsigned int i, pointCount = polyline.count();
+
+  QgsPolyline tempPolyline( pointCount );
+  QPointF* tempPtr = polyline.data();
+  for ( i = 0; i < pointCount; ++i, tempPtr++ )
+    tempPolyline[i] = QgsPoint( tempPtr->rx(), tempPtr->ry() );
+
+  QgsGeometry* tempGeometry = QgsGeometry::fromPolyline( tempPolyline );
+  if ( tempGeometry )
+  {
+    const GEOSGeometry* geosGeom = tempGeometry->asGeos();
+    GEOSGeometry* offsetGeom = GEOSOffsetCurve( geosGeom, dist, 8 /*quadSegments*/, 0 /*joinStyle*/, 5.0 /*mitreLimit*/ );
+
+    if ( offsetGeom )
+    {
+      tempGeometry->fromGeos( offsetGeom );
+
+      if ( QGis::flatType( tempGeometry->wkbType() ) == QGis::WKBLineString )
+      {
+        tempPolyline = tempGeometry->asPolyline();
+
+        pointCount = tempPolyline.count();
+        newLine.resize( pointCount );
+
+        QgsPoint* tempPtr2 = tempPolyline.data();
+        for ( i = 0; i < pointCount; ++i, tempPtr2++ )
+          newLine[i] = QPointF( tempPtr2->x(), tempPtr2->y() );
+        resultLine.append( newLine );
+
+        delete tempGeometry;
+        return resultLine;
+      }
+      else if ( QGis::flatType( tempGeometry->wkbType() ) == QGis::WKBMultiLineString )
+      {
+        QgsMultiPolyline tempMPolyline = tempGeometry->asMultiPolyline();
+
+        for ( int part = 0; part < tempMPolyline.count(); ++part )
+        {
+          tempPolyline = tempMPolyline[ part ];
+
+          pointCount = tempPolyline.count();
+          newLine.resize( pointCount );
+
+          QgsPoint* tempPtr2 = tempPolyline.data();
+          for ( i = 0; i < pointCount; ++i, tempPtr2++ )
+            newLine[i] = QPointF( tempPtr2->x(), tempPtr2->y() );
+          resultLine.append( newLine );
+
+          newLine = QPolygonF();
+        }
+        delete tempGeometry;
+        return resultLine;
+      }
+    }
+    delete tempGeometry;
+  }
+
+  // returns original polyline when 'GEOSOffsetCurve' fails!
+  resultLine.append( polyline );
+  return resultLine;
+
+#else
 
   double angle = 0.0, t_new, t_old = 0;
   QPointF pt_old, pt_new;
@@ -675,7 +775,11 @@ QPolygonF offsetLine( QPolygonF polyline, double dist )
   // last line segment:
   pt_new = offsetPoint( p2, angle + M_PI / 2, dist );
   newLine.append( pt_new );
-  return newLine;
+
+  resultLine.append( newLine );
+  return resultLine;
+
+#endif
 }
 
 /////
@@ -743,6 +847,13 @@ QgsSymbolV2* QgsSymbolLayerV2Utils::loadSymbol( QDomElement& element )
   if ( element.hasAttribute( "outputUnit" ) )
   {
     symbol->setOutputUnit( decodeOutputUnit( element.attribute( "outputUnit" ) ) );
+  }
+  if ( element.hasAttribute(( "mapUnitScale" ) ) )
+  {
+    QgsMapUnitScale mapUnitScale;
+    mapUnitScale.minScale = element.attribute( "mapUnitMinScale", "0.0" ).toDouble();
+    mapUnitScale.maxScale = element.attribute( "mapUnitMaxScale", "0.0" ).toDouble();
+    symbol->setMapUnitScale( mapUnitScale );
   }
   symbol->setAlpha( element.attribute( "alpha", "1.0" ).toDouble() );
 
@@ -1057,10 +1168,12 @@ bool QgsSymbolLayerV2Utils::hasExternalGraphic( QDomElement &element )
   {
     return true;
   }
+#if 0
   else if ( !inlineContentElem.isNull() )
   {
     return false; // not implemented yet
   }
+#endif
   else
   {
     return false;
@@ -1180,7 +1293,8 @@ bool QgsSymbolLayerV2Utils::needLinePatternFill( QDomElement &element )
   QString name;
   QColor fillColor, borderColor;
   double size, borderWidth;
-  if ( !wellKnownMarkerFromSld( graphicElem, name, fillColor, borderColor, borderWidth, size ) )
+  Qt::PenStyle borderStyle;
+  if ( !wellKnownMarkerFromSld( graphicElem, name, fillColor, borderColor, borderStyle, borderWidth, size ) )
     return false;
 
   if ( name != "horline" )
@@ -1223,9 +1337,9 @@ bool QgsSymbolLayerV2Utils::convertPolygonSymbolizerToPointMarker( QDomElement &
   QgsDebugMsg( "Entered." );
 
   /* SE 1.1 says about PolygonSymbolizer:
-     if a point geometry is referenced instead of a polygon,
-     then a small, square, ortho-normal polygon should be
-     constructed for rendering.
+  if a point geometry is referenced instead of a polygon,
+  then a small, square, ortho-normal polygon should be
+  constructed for rendering.
    */
 
   QgsSymbolLayerV2List layers;
@@ -1357,8 +1471,10 @@ bool QgsSymbolLayerV2Utils::convertPolygonSymbolizerToPointMarker( QDomElement &
               found = true;
               break;
             }
+#if 0
             else if ( !inlineContentElem.isNull() )
-              continue; // TODO: not implemeneted yet
+              continue; // TODO: not implemented yet
+#endif
             else
               continue;
           }
@@ -1520,7 +1636,7 @@ void QgsSymbolLayerV2Utils::fillToSld( QDomDocument &doc, QDomElement &element, 
   QColor borderColor = !patternName.startsWith( "brush://" ) ? color : QColor();
 
   /* Use WellKnownName tag to handle QT brush styles. */
-  wellKnownMarkerToSld( doc, graphicFillElem, patternName, fillColor, borderColor );
+  wellKnownMarkerToSld( doc, graphicElem, patternName, fillColor, borderColor, Qt::SolidLine, -1, -1 );
 }
 
 bool QgsSymbolLayerV2Utils::fillFromSld( QDomElement &element, Qt::BrushStyle &brushStyle, QColor &color )
@@ -1561,7 +1677,8 @@ bool QgsSymbolLayerV2Utils::fillFromSld( QDomElement &element, Qt::BrushStyle &b
     QString patternName = "square";
     QColor fillColor, borderColor;
     double borderWidth, size;
-    if ( !wellKnownMarkerFromSld( graphicFillElem, patternName, fillColor, borderColor, borderWidth, size ) )
+    Qt::PenStyle borderStyle;
+    if ( !wellKnownMarkerFromSld( graphicElem, patternName, fillColor, borderColor, borderStyle, borderWidth, size ) )
       return false;
 
     brushStyle = decodeSldBrushStyle( patternName );
@@ -1907,6 +2024,13 @@ void QgsSymbolLayerV2Utils::wellKnownMarkerToSld( QDomDocument &doc, QDomElement
     QString name, QColor color, QColor borderColor,
     double borderWidth, double size )
 {
+  wellKnownMarkerToSld( doc, element, name, color, borderColor, Qt::SolidLine, borderWidth, size );
+}
+
+void QgsSymbolLayerV2Utils::wellKnownMarkerToSld( QDomDocument &doc, QDomElement &element,
+    QString name, QColor color, QColor borderColor, Qt::PenStyle borderStyle,
+    double borderWidth, double size )
+{
   QDomElement markElem = doc.createElement( "se:Mark" );
   element.appendChild( markElem );
 
@@ -1926,7 +2050,7 @@ void QgsSymbolLayerV2Utils::wellKnownMarkerToSld( QDomDocument &doc, QDomElement
   if ( borderColor.isValid() )
   {
     QDomElement strokeElem = doc.createElement( "se:Stroke" );
-    lineToSld( doc, strokeElem, Qt::SolidLine, borderColor, borderWidth );
+    lineToSld( doc, strokeElem, borderStyle, borderColor, borderWidth );
     markElem.appendChild( strokeElem );
   }
 
@@ -1941,6 +2065,14 @@ void QgsSymbolLayerV2Utils::wellKnownMarkerToSld( QDomDocument &doc, QDomElement
 
 bool QgsSymbolLayerV2Utils::wellKnownMarkerFromSld( QDomElement &element,
     QString &name, QColor &color, QColor &borderColor,
+    double &borderWidth, double &size )
+{
+  Qt::PenStyle borderStyle;
+  return wellKnownMarkerFromSld( element, name, color, borderColor, borderStyle, borderWidth, size );
+}
+
+bool QgsSymbolLayerV2Utils::wellKnownMarkerFromSld( QDomElement &element,
+    QString &name, QColor &color, QColor &borderColor, Qt::PenStyle &borderStyle,
     double &borderWidth, double &size )
 {
   QgsDebugMsg( "Entered." );
@@ -1970,8 +2102,7 @@ bool QgsSymbolLayerV2Utils::wellKnownMarkerFromSld( QDomElement &element,
 
   // <Stroke>
   QDomElement strokeElem = markElem.firstChildElement( "Stroke" );
-  Qt::PenStyle p = Qt::SolidLine;
-  lineFromSld( strokeElem, p, borderColor, borderWidth );
+  lineFromSld( strokeElem, borderStyle, borderColor, borderWidth );
   // ignore border style, solid expected
 
   // <Size>
@@ -2259,7 +2390,7 @@ bool QgsSymbolLayerV2Utils::functionFromSldElement( QDomElement &element, QStrin
   }
   else
   {
-    function = expr->dump();
+    function = expr->expression();
   }
 
   delete expr;
@@ -2269,18 +2400,11 @@ bool QgsSymbolLayerV2Utils::functionFromSldElement( QDomElement &element, QStrin
 void QgsSymbolLayerV2Utils::createOnlineResourceElement( QDomDocument &doc, QDomElement &element,
     QString path, QString format )
 {
-  QString relpath = symbolPathToName( path );
-
-  // convert image path to url
-  QUrl url( relpath );
-  if ( !url.isValid() || url.scheme().isEmpty() )
-  {
-    url.setUrl( QUrl::fromLocalFile( relpath ).toString() );
-  }
-
+  // get resource url or relative path
+  QString url = symbolPathToName( path );
   QDomElement onlineResourceElem = doc.createElement( "se:OnlineResource" );
   onlineResourceElem.setAttribute( "xlink:type", "simple" );
-  onlineResourceElem.setAttribute( "xlink:href", url.toString() );
+  onlineResourceElem.setAttribute( "xlink:href", url );
   element.appendChild( onlineResourceElem );
 
   QDomElement formatElem = doc.createElement( "se:Format" );
@@ -2547,7 +2671,7 @@ QColor QgsSymbolLayerV2Utils::parseColor( QString colorStr )
   return QColor( p[0].toInt(), p[1].toInt(), p[2].toInt() );
 }
 
-double QgsSymbolLayerV2Utils::lineWidthScaleFactor( const QgsRenderContext& c, QgsSymbolV2::OutputUnit u )
+double QgsSymbolLayerV2Utils::lineWidthScaleFactor( const QgsRenderContext& c, QgsSymbolV2::OutputUnit u, const QgsMapUnitScale& scale )
 {
 
   if ( u == QgsSymbolV2::MM )
@@ -2556,7 +2680,7 @@ double QgsSymbolLayerV2Utils::lineWidthScaleFactor( const QgsRenderContext& c, Q
   }
   else //QgsSymbol::MapUnit
   {
-    double mup = c.mapToPixel().mapUnitsPerPixel();
+    double mup = scale.computeMapUnitsPerPixel( c );
     if ( mup > 0 )
     {
       return 1.0 / mup;
@@ -2568,7 +2692,7 @@ double QgsSymbolLayerV2Utils::lineWidthScaleFactor( const QgsRenderContext& c, Q
   }
 }
 
-double QgsSymbolLayerV2Utils::pixelSizeScaleFactor( const QgsRenderContext& c, QgsSymbolV2::OutputUnit u )
+double QgsSymbolLayerV2Utils::pixelSizeScaleFactor( const QgsRenderContext& c, QgsSymbolV2::OutputUnit u, const QgsMapUnitScale& scale )
 {
   if ( u == QgsSymbolV2::MM )
   {
@@ -2576,10 +2700,10 @@ double QgsSymbolLayerV2Utils::pixelSizeScaleFactor( const QgsRenderContext& c, Q
   }
   else //QgsSymbol::MapUnit
   {
-    double mup = c.mapToPixel().mapUnitsPerPixel();
+    double mup = scale.computeMapUnitsPerPixel( c );
     if ( mup > 0 )
     {
-      return c.rasterScaleFactor() / c.mapToPixel().mapUnitsPerPixel();
+      return c.rasterScaleFactor() / mup;
     }
     else
     {
@@ -2707,6 +2831,30 @@ void QgsSymbolLayerV2Utils::blurImageInPlace( QImage& image, const QRect& rect, 
     for ( int j = c1; j < c2; j++, p -= 4 )
       for ( int i = i1; i <= i2; i++ )
         p[i] = ( rgba[i] += (( p[i] << 4 ) - rgba[i] ) * alpha / 16 ) >> 4;
+  }
+}
+
+void QgsSymbolLayerV2Utils::premultiplyColor( QColor &rgb, int alpha )
+{
+  int r = 0, g = 0, b = 0;
+  double alphaFactor = 1.0;
+
+  if ( alpha != 255 && alpha > 0 )
+  {
+    // Semi-transparent pixel. We need to adjust the colors for ARGB32_Premultiplied images
+    // where color values have to be premultiplied by alpha
+
+    rgb.getRgb( &r, &g, &b );
+
+    alphaFactor = alpha / 255.;
+    r *= alphaFactor;
+    g *= alphaFactor;
+    b *= alphaFactor;
+    rgb.setRgb( r, g, b, alpha );
+  }
+  else if ( alpha == 0 )
+  {
+    rgb.setRgb( 0, 0, 0, 0 );
   }
 }
 
@@ -2913,7 +3061,7 @@ QString QgsSymbolLayerV2Utils::symbolPathToName( QString path )
 
     if ( !dir.isEmpty() && path.startsWith( dir ) )
     {
-      path = path.mid( dir.size() );
+      path = path.mid( dir.size() + 1 );
       isInSvgPathes = true;
       break;
     }
@@ -2924,4 +3072,53 @@ QString QgsSymbolLayerV2Utils::symbolPathToName( QString path )
 
   return QgsProject::instance()->writePath( path );
 }
+
+QPointF QgsSymbolLayerV2Utils::polygonCentroid( const QPolygonF& points )
+{
+  //Calculate the centroid of points
+  double cx = 0, cy = 0;
+  double area, sum = 0;
+  for ( int i = points.count() - 1, j = 0; j < points.count(); i = j++ )
+  {
+    const QPointF& p1 = points[i];
+    const QPointF& p2 = points[j];
+    area = p1.x() * p2.y() - p1.y() * p2.x();
+    sum += area;
+    cx += ( p1.x() + p2.x() ) * area;
+    cy += ( p1.y() + p2.y() ) * area;
+  }
+  sum *= 3.0;
+  cx /= sum;
+  cy /= sum;
+
+  return QPointF( cx, cy );
+}
+
+
+QgsExpression* QgsSymbolLayerV2Utils::fieldOrExpressionToExpression( const QString& fieldOrExpression )
+{
+  if ( fieldOrExpression.isEmpty() )
+    return 0;
+
+  QgsExpression* expr = new QgsExpression( fieldOrExpression );
+  if ( !expr->hasParserError() )
+    return expr;
+
+  // now try with quoted field name
+  delete expr;
+  QgsExpression* expr2 = new QgsExpression( QgsExpression::quotedColumnRef( fieldOrExpression ) );
+  Q_ASSERT( !expr2->hasParserError() );
+  return expr2;
+}
+
+QString QgsSymbolLayerV2Utils::fieldOrExpressionFromExpression( QgsExpression* expression )
+{
+  const QgsExpression::Node* n = expression->rootNode();
+
+  if ( n && n->nodeType() == QgsExpression::ntColumnRef )
+    return static_cast<const QgsExpression::NodeColumnRef*>( n )->name();
+
+  return expression->expression();
+}
+
 

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>QgsAttributeTableDialog</class>
  <widget class="QDialog" name="QgsAttributeTableDialog">
@@ -43,7 +43,7 @@
         <string/>
        </property>
        <property name="icon">
-        <iconset resource="../../images/images.qrc">
+        <iconset>
          <normaloff>:/images/themes/default/mActionToggleEditing.svg</normaloff>:/images/themes/default/mActionToggleEditing.svg</iconset>
        </property>
        <property name="iconSize">
@@ -72,7 +72,7 @@
         <string/>
        </property>
        <property name="icon">
-        <iconset resource="../../images/images.qrc">
+        <iconset>
          <normaloff>:/images/themes/default/mActionSaveEdits.svg</normaloff>:/images/themes/default/mActionSaveEdits.svg</iconset>
        </property>
        <property name="iconSize">
@@ -105,21 +105,7 @@
         <string>Add feature</string>
        </property>
        <property name="text">
-        <string>+</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QToolButton" name="mDeleteSelectedButton">
-       <property name="toolTip">
-        <string>Delete selected features (Ctrl+D)</string>
-       </property>
-       <property name="text">
-        <string>...</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>../../images/themes/default/mActionDeleteSelected.png</normaloff>../../images/themes/default/mActionDeleteSelected.png</iconset>
+        <string/>
        </property>
        <property name="iconSize">
         <size>
@@ -127,8 +113,25 @@
          <height>18</height>
         </size>
        </property>
-       <property name="shortcut">
-        <string>Ctrl+D</string>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="mDeleteSelectedButton">
+       <property name="toolTip">
+        <string>Delete selected features (DEL)</string>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>:/images/themes/default/mActionDeleteSelected.svg</normaloff>:/images/themes/default/mActionDeleteSelected.svg</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>18</width>
+         <height>18</height>
+        </size>
        </property>
       </widget>
      </item>
@@ -148,7 +151,7 @@
         <string>...</string>
        </property>
        <property name="icon">
-        <iconset resource="../../images/images.qrc">
+        <iconset>
          <normaloff>:/images/themes/default/mIconExpressionSelect.svg</normaloff>:/images/themes/default/mIconExpressionSelect.svg</iconset>
        </property>
        <property name="iconSize">
@@ -169,7 +172,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionUnselectAttributes.png</normaloff>../../images/themes/default/mActionUnselectAttributes.png</iconset>
+         <normaloff>:/images/themes/default/mActionUnselectAttributes.png</normaloff>:/images/themes/default/mActionUnselectAttributes.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -192,7 +195,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionSelectedToTop.png</normaloff>../../images/themes/default/mActionSelectedToTop.png</iconset>
+         <normaloff>:/images/themes/default/mActionSelectedToTop.png</normaloff>:/images/themes/default/mActionSelectedToTop.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -218,7 +221,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionInvertSelection.png</normaloff>../../images/themes/default/mActionInvertSelection.png</iconset>
+         <normaloff>:/images/themes/default/mActionInvertSelection.png</normaloff>:/images/themes/default/mActionInvertSelection.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -244,7 +247,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionPanToSelected.png</normaloff>../../images/themes/default/mActionPanToSelected.png</iconset>
+         <normaloff>:/images/themes/default/mActionPanToSelected.svg</normaloff>:/images/themes/default/mActionPanToSelected.svg</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -270,7 +273,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionZoomToSelected.png</normaloff>../../images/themes/default/mActionZoomToSelected.png</iconset>
+         <normaloff>:/images/themes/default/mActionZoomToSelected.svg</normaloff>:/images/themes/default/mActionZoomToSelected.svg</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -296,7 +299,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionEditCopy.png</normaloff>../../images/themes/default/mActionEditCopy.png</iconset>
+         <normaloff>:/images/themes/default/mActionEditCopy.png</normaloff>:/images/themes/default/mActionEditCopy.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -326,7 +329,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionDeleteAttribute.png</normaloff>../../images/themes/default/mActionDeleteAttribute.png</iconset>
+         <normaloff>:/images/themes/default/mActionDeleteAttribute.png</normaloff>:/images/themes/default/mActionDeleteAttribute.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -349,7 +352,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionNewAttribute.png</normaloff>../../images/themes/default/mActionNewAttribute.png</iconset>
+         <normaloff>:/images/themes/default/mActionNewAttribute.png</normaloff>:/images/themes/default/mActionNewAttribute.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -372,7 +375,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionCalculateField.png</normaloff>../../images/themes/default/mActionCalculateField.png</iconset>
+         <normaloff>:/images/themes/default/mActionCalculateField.png</normaloff>:/images/themes/default/mActionCalculateField.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -443,14 +446,14 @@
      <item>
       <widget class="QToolButton" name="mFilterButton">
        <property name="toolTip">
-        <string>The filter defines, which features are currently shown in the list or on the table</string>
+        <string>The filter defines which features are currently shown in the list or on the table</string>
        </property>
        <property name="text">
         <string>Filter</string>
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../../images/themes/default/mActionFilter.png</normaloff>../../images/themes/default/mActionFilter.png</iconset>
+         <normaloff>:/images/themes/default/mActionFilter.png</normaloff>:/images/themes/default/mActionFilter.png</iconset>
        </property>
        <property name="popupMode">
         <enum>QToolButton::MenuButtonPopup</enum>
@@ -497,11 +500,11 @@
        <item>
         <widget class="QToolButton" name="mAttributeViewButton">
          <property name="text">
-          <string>Attribute View</string>
+          <string>Form View</string>
          </property>
          <property name="icon">
           <iconset>
-           <normaloff>../../images/themes/default/mActionPropertyItem.png</normaloff>../../images/themes/default/mActionPropertyItem.png</iconset>
+           <normaloff>:/images/themes/default/mActionPropertyItem.png</normaloff>:/images/themes/default/mActionPropertyItem.png</iconset>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -518,7 +521,7 @@
          </property>
          <property name="icon">
           <iconset>
-           <normaloff>../../images/themes/default/mActionOpenTable.png</normaloff>../../images/themes/default/mActionOpenTable.png</iconset>
+           <normaloff>:/images/themes/default/mActionOpenTable.png</normaloff>:/images/themes/default/mActionOpenTable.png</iconset>
          </property>
          <property name="checkable">
           <bool>true</bool>
@@ -539,7 +542,7 @@
   <action name="mActionAdvancedFilter">
    <property name="icon">
     <iconset>
-     <normaloff>../../images/themes/default/mActionFilter.png</normaloff>../../images/themes/default/mActionFilter.png</iconset>
+     <normaloff>:/images/themes/default/mActionFilter.png</normaloff>:/images/themes/default/mActionFilter.png</iconset>
    </property>
    <property name="text">
     <string>Advanced Filter (Expression)</string>
@@ -553,7 +556,7 @@
   </action>
   <action name="mActionShowAllFilter">
    <property name="icon">
-    <iconset resource="../../images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionFilter.png</normaloff>:/images/themes/default/mActionFilter.png</iconset>
    </property>
    <property name="text">
@@ -562,7 +565,7 @@
   </action>
   <action name="mActionSelectedFilter">
    <property name="icon">
-    <iconset resource="../../images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionFilter.png</normaloff>:/images/themes/default/mActionFilter.png</iconset>
    </property>
    <property name="text">
@@ -571,7 +574,7 @@
   </action>
   <action name="mActionVisibleFilter">
    <property name="icon">
-    <iconset resource="../../images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionFilter.png</normaloff>:/images/themes/default/mActionFilter.png</iconset>
    </property>
    <property name="text">
@@ -585,7 +588,7 @@
   </action>
   <action name="mActionEditedFilter">
    <property name="icon">
-    <iconset resource="../../images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionFilter.png</normaloff>:/images/themes/default/mActionFilter.png</iconset>
    </property>
    <property name="text">
@@ -622,9 +625,7 @@
   <tabstop>mRemoveAttribute</tabstop>
   <tabstop>mOpenFieldCalculator</tabstop>
  </tabstops>
- <resources>
-  <include location="../../images/images.qrc"/>
- </resources>
+ <resources/>
  <connections>
   <connection>
    <sender>mToggleEditingButton</sender>

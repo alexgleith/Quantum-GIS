@@ -58,6 +58,19 @@ class CORE_EXPORT QgsComposerLegend : public QgsComposerItem
     void setTitle( const QString& t ) {mTitle = t;}
     QString title() const {return mTitle;}
 
+    /**Returns the alignment of the legend title
+     * @returns Qt::AlignmentFlag for the legend title
+     * @note added in 2.3
+     * @see setTitleAlignment
+    */
+    Qt::AlignmentFlag titleAlignment() const { return mTitleAlignment; }
+    /**Sets the alignment of the legend title
+     * @param alignment Text alignment for drawing the legend title
+     * @note added in 2.3
+     * @see titleAlignment
+    */
+    void setTitleAlignment( Qt::AlignmentFlag alignment ) { mTitleAlignment = alignment; }
+
     /** Returns reference to modifiable style */
     QgsComposerLegendStyle & rstyle( QgsComposerLegendStyle::Style s ) { return mStyleMap[s]; }
     /** Returns style */
@@ -86,6 +99,12 @@ class CORE_EXPORT QgsComposerLegend : public QgsComposerItem
 
     double symbolHeight() const {return mSymbolHeight;}
     void setSymbolHeight( double h ) {mSymbolHeight = h;}
+
+    double wmsLegendWidth() const {return mWmsLegendWidth;}
+    void setWmsLegendWidth( double w ) {mWmsLegendWidth = w;}
+
+    double wmsLegendHeight() const {return mWmsLegendHeight;}
+    void setWmsLegendHeight( double h ) {mWmsLegendHeight = h;}
 
     void setWrapChar( const QString& t ) {mWrapChar = t;}
     QString wrapChar() const {return mWrapChar;}
@@ -139,8 +158,16 @@ class CORE_EXPORT QgsComposerLegend : public QgsComposerItem
     /**Height of symbol icon*/
     double mSymbolHeight;
 
+    /**Width of WMS legendGraphic pixmap*/
+    double mWmsLegendWidth;
+    /**Height of WMS legendGraphic pixmap*/
+    double mWmsLegendHeight;
+
     /** Spacing between lines when wrapped */
     double mlineSpacing;
+
+    /** Title alignment, one of Qt::AlignLeft, Qt::AlignHCenter, Qt::AlignRight) */
+    Qt::AlignmentFlag mTitleAlignment;
 
     /** Number of legend columns */
     int mColumnCount;
@@ -203,6 +230,9 @@ class CORE_EXPORT QgsComposerLegend : public QgsComposerItem
 
     QgsComposerLegend(); //forbidden
 
+    /**Draws title in the legend using the title font and the specified alignment
+     * If no painter is specified, function returns the required width/height to draw the title.
+     */
     QSizeF drawTitle( QPainter* painter = 0, QPointF point = QPointF(), Qt::AlignmentFlag halignment = Qt::AlignLeft );
 
     /**Draws a group item and all subitems
@@ -236,3 +266,4 @@ class CORE_EXPORT QgsComposerLegend : public QgsComposerItem
 };
 
 #endif
+

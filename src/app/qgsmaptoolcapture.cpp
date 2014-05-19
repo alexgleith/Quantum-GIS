@@ -36,7 +36,9 @@ QgsMapToolCapture::QgsMapToolCapture( QgsMapCanvas* canvas, enum CaptureMode too
     : QgsMapToolEdit( canvas )
     , mCaptureMode( tool )
     , mRubberBand( 0 )
+    , mTempRubberBand( 0 )
     , mValidator( 0 )
+    , mSnappingMarker( 0 )
 {
   mCaptureModeFromLayer = tool == CaptureNone;
   mCapturing = false;
@@ -50,8 +52,7 @@ QgsMapToolCapture::QgsMapToolCapture( QgsMapCanvas* canvas, enum CaptureMode too
 
 QgsMapToolCapture::~QgsMapToolCapture()
 {
-  while ( !mSnappingMarkers.isEmpty() )
-    delete mSnappingMarkers.takeFirst();
+  delete mSnappingMarker;
 
   stopCapturing();
 
@@ -64,10 +65,8 @@ QgsMapToolCapture::~QgsMapToolCapture()
 
 void QgsMapToolCapture::deactivate()
 {
-  while ( !mSnappingMarkers.isEmpty() )
-    delete mSnappingMarkers.takeFirst();
-
-  stopCapturing();
+  delete mSnappingMarker;
+  mSnappingMarker = 0;
 
   QgsMapToolEdit::deactivate();
 }
@@ -102,33 +101,25 @@ void QgsMapToolCapture::currentLayerChanged( QgsMapLayer *layer )
   }
 }
 
-
 void QgsMapToolCapture::canvasMoveEvent( QMouseEvent * e )
 {
-  if ( mCaptureMode == CapturePoint )
-    return;
-
-  if ( mRubberBand && mCapturing )
+  QgsPoint mapPoint;
+  QList<QgsSnappingResult> snapResults;
+  if ( mSnapper.snapToBackgroundLayers( e->pos(), snapResults ) == 0 )
   {
-    QgsPoint mapPoint;
-    QList<QgsSnappingResult> snapResults;
-    if ( mSnapper.snapToBackgroundLayers( e->pos(), snapResults ) == 0 )
+    delete mSnappingMarker;
+
+    mSnappingMarker = new QgsVertexMarker( mCanvas );
+    mSnappingMarker->setIconType( QgsVertexMarker::ICON_CROSS );
+    mSnappingMarker->setColor( Qt::magenta );
+    mSnappingMarker->setPenWidth( 3 );
+    mSnappingMarker->setCenter( snapPointFromResults( snapResults, e->pos() ) );
+
+
+    if ( mCaptureMode != CapturePoint && mTempRubberBand && mCapturing )
     {
-      while ( !mSnappingMarkers.isEmpty() )
-        delete mSnappingMarkers.takeFirst();
-
-      foreach ( const QgsSnappingResult &r, snapResults )
-      {
-        QgsVertexMarker *m = new QgsVertexMarker( mCanvas );
-        m->setIconType( QgsVertexMarker::ICON_CROSS );
-        m->setColor( Qt::green );
-        m->setPenWidth( 1 );
-        m->setCenter( r.snappedVertex );
-        mSnappingMarkers << m;
-      }
-
       mapPoint = snapPointFromResults( snapResults, e->pos() );
-      mRubberBand->movePoint( mapPoint );
+      mTempRubberBand->movePoint( mapPoint );
     }
   }
 } // mouseMoveEvent
@@ -140,10 +131,6 @@ void QgsMapToolCapture::canvasPressEvent( QMouseEvent *e )
   // nothing to be done
 }
 
-
-void QgsMapToolCapture::renderComplete()
-{
-}
 
 int QgsMapToolCapture::nextPoint( const QPoint &p, QgsPoint &layerPoint, QgsPoint &mapPoint )
 {
@@ -185,7 +172,6 @@ int QgsMapToolCapture::nextPoint( const QPoint &p, QgsPoint &layerPoint, QgsPoin
   return 0;
 }
 
-
 int QgsMapToolCapture::addVertex( const QPoint &p )
 {
   QgsPoint layerPoint;
@@ -208,9 +194,28 @@ int QgsMapToolCapture::addVertex( const QPoint &p )
   {
     mRubberBand = createRubberBand( mCaptureMode == CapturePolygon ? QGis::Polygon : QGis::Line );
   }
-
   mRubberBand->addPoint( mapPoint );
   mCaptureList.append( layerPoint );
+
+  if ( !mTempRubberBand )
+  {
+    mTempRubberBand = createRubberBand( mCaptureMode == CapturePolygon ? QGis::Polygon : QGis::Line , true );
+  }
+  else
+  {
+    mTempRubberBand->reset( mCaptureMode == CapturePolygon ? true : false );
+  }
+  if ( mCaptureMode == CaptureLine )
+  {
+    mTempRubberBand->addPoint( mapPoint );
+  }
+  else if ( mCaptureMode == CapturePolygon )
+  {
+    const QgsPoint *firstPoint = mRubberBand->getPoint( 0 , 0 );
+    mTempRubberBand->addPoint( *firstPoint );
+    mTempRubberBand->movePoint( mapPoint );
+    mTempRubberBand->addPoint( mapPoint );
+  }
 
   validateGeometry();
 
@@ -222,6 +227,7 @@ void QgsMapToolCapture::undo()
   if ( mRubberBand )
   {
     int rubberBandSize = mRubberBand->numberOfVertices();
+    int tempRubberBandSize = mTempRubberBand->numberOfVertices();
     int captureListSize = mCaptureList.size();
 
     if ( rubberBandSize < 1 || captureListSize < 1 )
@@ -229,7 +235,21 @@ void QgsMapToolCapture::undo()
       return;
     }
 
-    mRubberBand->removePoint( -2 ); // remove the one before the last one
+    mRubberBand->removePoint( -1 );
+
+    if ( rubberBandSize > 1 )
+    {
+      if ( tempRubberBandSize > 1 )
+      {
+        const QgsPoint *point = mRubberBand->getPoint( 0, rubberBandSize - 2 );
+        mTempRubberBand->movePoint( tempRubberBandSize - 2, *point );
+      }
+    }
+    else
+    {
+      mTempRubberBand->reset( mCaptureMode == CapturePolygon ? true : false );
+    }
+
     mCaptureList.removeLast();
 
     validateGeometry();
@@ -241,6 +261,9 @@ void QgsMapToolCapture::keyPressEvent( QKeyEvent* e )
   if ( e->key() == Qt::Key_Backspace || e->key() == Qt::Key_Delete )
   {
     undo();
+
+    // Override default shortcut management in MapCanvas
+    e->ignore();
   }
 }
 
@@ -255,6 +278,12 @@ void QgsMapToolCapture::stopCapturing()
   {
     delete mRubberBand;
     mRubberBand = 0;
+  }
+
+  if ( mTempRubberBand )
+  {
+    delete mTempRubberBand;
+    mTempRubberBand = 0;
   }
 
   while ( !mGeomErrorMarkers.isEmpty() )
@@ -272,6 +301,15 @@ void QgsMapToolCapture::stopCapturing()
   mCapturing = false;
   mCaptureList.clear();
   mCanvas->refresh();
+}
+
+void QgsMapToolCapture::deleteTempRubberBand()
+{
+  if ( mTempRubberBand )
+  {
+    delete mTempRubberBand;
+    mTempRubberBand = 0;
+  }
 }
 
 void QgsMapToolCapture::closePolygon()
@@ -344,7 +382,7 @@ void QgsMapToolCapture::addError( QgsGeometry::Error e )
   if ( e.hasWhere() )
   {
     QgsVertexMarker *vm =  new QgsVertexMarker( mCanvas );
-    vm->setCenter( mCanvas->mapRenderer()->layerToMapCoordinates( vlayer, e.where() ) );
+    vm->setCenter( mCanvas->mapSettings().layerToMapCoordinates( vlayer, e.where() ) );
     vm->setIconType( QgsVertexMarker::ICON_X );
     vm->setPenWidth( 2 );
     vm->setToolTip( e.what() );
